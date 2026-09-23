@@ -76,7 +76,13 @@ This log records the significant design decisions in this project: what was deci
 
 **Decision.** Use a free-tier hosted PostgreSQL instance.
 
-**Open:** choose between Neon and Supabase by **Day 1**. Criteria: free-tier storage and compute limits, connection pooling, whether idle projects are paused or suspended, and backup and branching options.
+**Provider: Neon** (free plan, AWS US East 2, PostgreSQL 18). Chosen over Supabase because:
+
+- It is plain PostgreSQL with no extra platform, which suits a dbt warehouse.
+- Idle compute suspends and resumes automatically on connection; the project itself is not paused for inactivity, so the monthly pipeline and the public dashboard keep working.
+- Branching allows disposable copies of the database for testing transformations.
+
+Connections use the direct (non-pooled) string for dbt and scripts; the dashboard may move to the pooled string later.
 
 **Alternatives considered.**
 
@@ -85,6 +91,7 @@ This log records the significant design decisions in this project: what was deci
 - Cloud warehouse (BigQuery/Snowflake): rejected as unnecessary at this data volume and adding cost risk.
 
 **Consequences.** There is a dependency on free-tier limits and availability. Credentials must be handled via GitHub Secrets and environment variables and never committed.
+The first connection after an idle period takes a few seconds while compute resumes.
 
 **Revisit if.** Free-tier limits are hit, or when the AWS deployment (DL-013) is built.
 
