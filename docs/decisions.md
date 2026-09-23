@@ -23,6 +23,8 @@ This log records the significant design decisions in this project: what was deci
 | DL-011 | GitHub Actions for scheduling, not Airflow | Accepted | 2026-09-23 |
 | DL-012 | Streamlit for the public dashboard, not Power BI | Accepted | 2026-09-23 |
 | DL-013 | AWS as documented target architecture, not deployed in v1 | Accepted | 2026-09-23 |
+| DL-014 | Maize price series: no cross-name joining; forecast on wholesale 2006–2022 | Accepted (live-forecast source open) | 2026-09-23 |
+| DL-015 | Market type classification; index uses town markets only | Accepted | 2026-09-23 |
 
 ---
 
@@ -185,6 +187,8 @@ Transformations run in dbt, with schema tests on keys, accepted values and plaus
 
 **Consequences.** Excluded markets may be disproportionately remote and food-insecure, so the forecast sample is biased toward better-served markets. This must be stated as a limitation.
 
+Refined by DL-014: forecast scope is now wholesale maize in five main markets.
+
 ---
 
 ## DL-010 — Rolling-origin backtest against a seasonal-naive baseline
@@ -239,6 +243,51 @@ Transformations run in dbt, with schema tests on keys, accepted values and plaus
 
 ---
 
+## DL-014 — Maize price series: no cross-name joining; forecast on wholesale 2006–2022
+
+**Date:** 2026-09-23 · **Status:** Accepted (live-forecast source open)
+
+**Context.** WFP's Kenya file splits maize across several commodity names that changed around 2020–2021, with different market IDs, units (KG vs 90 KG bags) and coverage. Profiling tested whether they could be joined into continuous series:
+
+- Wholesale "Maize (white)" (90 KG) vs "Maize" (KG), 2006–2020, same five markets: 686 overlapping town-months, median absolute difference 4.1% (90th percentile 15.2%). Parallel series, probably from different sources.
+- Wholesale "Maize" vs "Maize (white, dry)", 2021–2022: 29 overlapping town-months, median difference 12.9%, with the direction of the gap differing between markets (higher in Eldoret, lower in Mombasa). No stable offset, so no defensible level adjustment.
+- Retail "Maize (white)" (to 2020) vs "Maize" (from 2020): no shared market IDs; four ASAL towns match by name (Garissa, Lodwar, Marigat, Marsabit) but have zero overlapping months and only 2–9 months of data on the new side.
+
+**Decision.**
+
+- Do not join series across commodity names. Each name is staged as a separate series.
+- Forecasting uses wholesale "Maize" (per kg) in Eldoret, Kisumu, Mombasa, Nairobi and Nakuru, 2006-01 to 2022-04, as a historical rolling-origin backtest. "Maize (white)" 90 KG ÷ 90 may fill gaps, with filled months flagged.
+- All prices are converted to KES per kg in staging.
+
+**Alternatives considered.**
+
+- Joining with a level adjustment: rejected because the offset is not stable across markets.
+- Forecasting on retail "Maize" 2020–2026: rejected because town markets have at most 9 months of data; only refugee camp markets are dense (38–53 months), and those are excluded by DL-015.
+
+**Consequences.** There is no live monthly price forecast from WFP data alone. The current risk signal relies more on rainfall and NDVI.
+
+**Revisit if.** FAO GIEWS FPMA (or another source) provides a consistent wholesale series for the same five markets after April 2022.
+
+---
+
+## DL-015 — Market type classification; index uses town markets only
+
+**Date:** 2026-09-23 · **Status:** Accepted
+
+**Context.** Recent retail series include refugee camp markets and Nairobi and Mombasa informal settlements. Camp prices are driven by aid distributions; informal-settlement prices reflect urban food access. Neither reflects county-level agricultural or drought conditions. Profiling also showed that the only dense recent retail series are camp markets.
+
+**Decision.** Add `market_type` (town / urban_informal / camp) to staging via a dbt seed. The county risk index uses `town` markets only. Other types are kept in the warehouse for later analysis.
+
+**Classification (from profiling):**
+
+- **camp:** IFO, Hagadera, Dagahaley (Dadaab); Kakuma 2, 3, 4; Kalobeyei Villages 1–3; Ethiopia, HongKong, Mogadishu (areas within Kakuma)
+- **urban_informal:** Kangemi, Kibra, Dandora, Mathare, Kawangware, Mukuru (Nairobi); Kalahari, Junda, Bangladesh, Kisumu Ndogo, Shonda, Moroto (Mombasa)
+- **town:** Lodwar, Garissa, Wajir, Marigat, Isiolo, Marsabit, Nairobi
+
+**Consequences.** Fewer price observations for Turkana, Garissa and Nairobi. The classification is manual and must be updated when new markets appear in the data.
+
+---
+
 ## Known limitations (running list)
 
 Add a line here whenever a limitation is discovered. This list feeds the README's limitations section.
@@ -246,6 +295,7 @@ Add a line here whenever a limitation is discovered. This list feeds the README'
 - Index validation covers ASAL counties only (DL-001).
 - Forecast market sample is biased toward well-covered markets (DL-009).
 - Climate aggregation method and boundaries are set by the publisher (DL-002).
+- No live monthly price forecast from WFP data; recent town-market prices are sparse (DL-014)
 
 ---
 
