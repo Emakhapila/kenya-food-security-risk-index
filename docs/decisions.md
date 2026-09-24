@@ -25,6 +25,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-013 | AWS as documented target architecture, not deployed in v1 | Accepted | 2026-09-23 |
 | DL-014 | Maize price series: no cross-name joining; forecast on wholesale 2006–2022 | Accepted (live-forecast source open) | 2026-09-23 |
 | DL-015 | Market type classification; index uses town markets only | Accepted | 2026-09-23 |
+| DL-016 | FEWS NET retail maize (via FAO FPMA) as primary price source | Accepted | 2026-09-24 |
 
 ---
 
@@ -285,6 +286,38 @@ Refined by DL-014: forecast scope is now wholesale maize in five main markets.
 - **town:** Lodwar, Garissa, Wajir, Marigat, Isiolo, Marsabit, Nairobi
 
 **Consequences.** Fewer price observations for Turkana, Garissa and Nairobi. The classification is manual and must be updated when new markets appear in the data.
+
+---
+
+## DL-016 — FEWS NET retail maize (via FAO FPMA) as primary price source
+
+**Date:** 2026-09-24 · **Status:** Accepted
+
+**Context.** WFP data cannot support a current monthly price signal (DL-014). The FAO GIEWS FPMA tool carries retail white maize prices collected by FEWS NET for 16 counties, mostly ASAL (Embu-Mbeere, Garissa, Isiolo, Kilifi, Kitui, Kwale, Lamu, Makueni, Mandera, Marsabit, Meru, Taita Taveta, Tana River, Tharaka Nithi, Turkana, Wajir), 2010-01 to 2026-07, KES per kg.
+
+Profiling:
+
+- Coverage 95–97% per county (190–193 of 199 months).
+- Two source-wide gaps: 2023-02 to 2023-07 (all counties) and 2020-05 to 2020-07 (13 counties; Garissa, Kitui and Kwale reported).
+- Garissa is a coarse, step-like series: seven flat runs of 6–11 months at round 5-shilling values, including an unchanged value through the 2020 gap.
+- Makueni, Taita Taveta and Wajir have isolated flat runs of 6–9 months (2013–2021).
+
+**Decision.**
+
+- FEWS NET retail maize via FPMA is the primary price source for the county risk index and the live monthly SARIMAX forecast.
+- Missing months stay missing (SARIMAX handles them); no imputation in staging.
+- Staging adds `is_flat_run` for runs of 6 or more identical months. Values are not altered.
+- Garissa is included in the index but reported separately in forecast evaluation as a low-resolution series.
+- "Embu-Mbeere" maps to Embu County in the alias table.
+
+**Constraints.**
+
+- No API: refreshed by a manual monthly CSV export (wide format, month-first dates), documented as a runbook step. The file name records the export date.
+- Licence CC BY-NC-SA: raw data is not committed; derived data shared under the same terms; not suitable as-is for commercial client work.
+
+**Alternatives considered.** WFP wholesale 2006–2022 for forecasting: kept as an optional v2 long-history backtest.
+
+**Revisit if.** FEWS NET's own data portal offers automated access or different licence terms.
 
 ---
 

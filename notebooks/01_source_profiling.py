@@ -260,6 +260,62 @@ print(f"prices: {len(price_counties)} | rainfall: {len(rain_names)} | ipc: {len(
 print("\nIn prices but not rainfall:", sorted(price_counties - rain_names)[:30])
 print("\nIn rainfall but not prices:", sorted(rain_names - price_counties)[:30])
 
+# %% ---------- FPMA (FEWS NET retail maize, ASAL counties) ----------
+FPMA = RAW / "fpma_ken_maize_white_retail_2026-09-24.csv"   # <- match your file name
+lines = FPMA.read_text(encoding="utf-8", errors="replace").splitlines()
+print(f"{len(lines)} lines")
+print("\n".join(lines[:12]))
+print("...")
+print("\n".join(lines[-3:]))
+
+# %% FPMA — reshape from wide to long
+fp = pd.read_csv(FPMA, dtype=str).drop(columns=["iso3_country_code"])
+fp["date"] = pd.to_datetime(fp["Date"], format="%m/%d/%Y")
+fpl = fp.drop(columns="Date").melt(id_vars="date", var_name="series", value_name="price")
+fpl["county_raw"] = fpl["series"].str.split(", ").str[2]
+fpl["price"] = pd.to_numeric(fpl["price"], errors="coerce")
+fpl["month"] = fpl["date"].dt.to_period("M")
+print(fpl.shape, "|", fpl["date"].min().date(), "->", fpl["date"].max().date())
+print(sorted(fpl["county_raw"].unique()))
+
+# %% FPMA — coverage, longest gap and longest flat run per county
+def longest_flat_run(s: pd.Series) -> int:
+    s = s.dropna()
+    if s.empty:
+        return 0
+    return int(s.groupby((s != s.shift()).cumsum()).size().max())
+
+def profile(g: pd.DataFrame) -> pd.Series:
+    g = g.sort_values("month")
+    have = g.dropna(subset=["price"])
+    missing = g["price"].isna()
+    longest_gap = int(missing.groupby((~missing).cumsum()).sum().max())
+    return pd.Series({
+        "months": len(have),
+        "coverage": round(len(have) / len(g), 2),
+        "first": have["month"].min(),
+        "last": have["month"].max(),
+        "longest_gap": longest_gap,
+        "longest_flat_run": longest_flat_run(g["price"]),
+    })
+
+fp_profile = fpl.groupby("county_raw").apply(profile, include_groups=False)
+print(fp_profile.sort_values("coverage").to_string())
+
+# %% FPMA — which months are missing, and for which counties?
+miss = (fpl[fpl["price"].isna()].groupby("month")["county_raw"]
+        .agg(n="count", counties=lambda s: ", ".join(sorted(s))))
+print(miss.to_string())
+
+# %% FPMA — where are the long flat runs?
+for c in ["Garissa", "Makueni", "Taita Taveta", "Wajir"]:
+    d = fpl[fpl["county_raw"] == c].dropna(subset=["price"]).sort_values("month")[["month", "price"]]
+    d["run"] = (d["price"] != d["price"].shift()).cumsum()
+    runs = d.groupby("run").agg(value=("price", "first"), start=("month", "min"),
+                                end=("month", "max"), length=("price", "size"))
+    print(f"\n{c}")
+    print(runs[runs["length"] >= 6].to_string(index=False))
+
 # %% [markdown]
 # ## Write up in docs/data-sources.md, one section per source:
 # - URL, licence, file name, last modified
