@@ -26,6 +26,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-014 | Maize price series: no cross-name joining; forecast on wholesale 2006–2022 | Accepted (live-forecast source open) | 2026-09-23 |
 | DL-015 | Market type classification; index uses town markets only | Accepted | 2026-09-23 |
 | DL-016 | FEWS NET retail maize (via FAO FPMA) as primary price source | Accepted | 2026-09-24 |
+| DL-017 | County rainfall and NDVI estimated from available units (pixel-weighted) | Accepted | 2026-09-24 |
 
 ---
 
@@ -321,6 +322,31 @@ Profiling:
 
 ---
 
+## DL-017 — County rainfall and NDVI estimated from available units (pixel-weighted)
+
+**Date:** 2026-09-24 · **Status:** Accepted
+
+**Context.** The WFP subnational rainfall file (the only files on HDX are full history and five-year subset; same units) covers 81 units: 8 counties at admin level 1 (KE004, KE008, KE010, KE019, KE023, KE037, KE043, KE047) and 73 sub-counties at admin level 2, with every county represented by 1–4 sub-counties. Direct county-level rainfall is unavailable for 39 counties, and sub-county coverage is too partial to sum into true county totals. All 16 counties with FEWS NET prices (DL-016) have at least one unit.
+The WFP subnational NDVI file covers exactly the same 81 units (confirmed by PCODE comparison)
+
+**Decision.**
+
+- Where a county-level (admin 1) row exists, use it.
+- Otherwise, estimate county rainfall as the mean of that county's available sub-county units, weighted by `n_pixels`.
+- Anomalies use the source's own long-term averages (1989–2018 reference period), aggregated the same way.
+- Staging records `rain_source_level` (adm1 / adm2_proxy) and `rain_units_used` per county, so coverage is visible in every downstream table.
+
+**Alternatives considered.**
+
+- Raster processing of CHIRPS: rejected under DL-002 (GDAL constraints on the development machine).
+- SERVIR ClimateSERV area aggregation: possible without local GDAL; kept for v2 if validation shows the proxy is weak.
+
+**Consequences.** County rainfall for 39 counties is an approximation based on part of the county's area. Large counties with diverse rainfall patterns (e.g. Garissa, Kitui) are most affected.
+
+**Revisit if.** Index validation against IPC is noticeably weaker for proxy counties than for admin-1 counties.
+
+---
+
 ## Known limitations (running list)
 
 Add a line here whenever a limitation is discovered. This list feeds the README's limitations section.
@@ -329,6 +355,7 @@ Add a line here whenever a limitation is discovered. This list feeds the README'
 - Forecast market sample is biased toward well-covered markets (DL-009).
 - Climate aggregation method and boundaries are set by the publisher (DL-002).
 - No live monthly price forecast from WFP data; recent town-market prices are sparse (DL-014)
+- County rainfall for 39 counties is estimated from a sample of 1–4 sub-counties (DL-017).
 
 ---
 

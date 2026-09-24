@@ -21,4 +21,21 @@
 
 ## Rainfall, NDVI, IPC
 
-- To profile on Day 2.
+- ## WFP Rainfall Indicators at Subnational Level — Kenya (HDX)
+
+- **File:** ken-rainfall-subnat-full.csv (also a 5-year file) · stable API download link
+- **Grain:** unit × dekad · 1981-01 to 2026-09 · CHIRPS-based
+- **Units:** 81 (8 counties at adm1, 73 sub-counties at adm2; every county has 1–4 units) (DL-017)
+- **Columns:** rfh/r1h/r3h (dekad, 1-month, 3-month rainfall mm) with long-term averages; rfq/r1q/r3q anomalies (% of 1989–2018 average)
+- **Versioning:** latest dekad is `prelim`, later revised to `final`
+
+## WFP NDVI at Subnational Level — Kenya (HDX)
+
+- **File:** ken-ndvi-subnat-full.csv · same 81 units as rainfall
+- **Grain:** unit × dekad · 2002-07 to 2026-09 · MODIS-based
+- **Columns:** vim (NDVI), vim_avg (long-term average), viq (anomaly, % of average). No version column.
+- **To check:** reference period for vim_avg
+
+## IPC
+
+- To profile.

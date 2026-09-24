@@ -214,6 +214,12 @@ print(rain.groupby(rain["date"].dt.year)["date"].nunique().tail(10).to_string())
 if "version" in rain.columns:
     print(rain["version"].value_counts().to_string())
 
+# %% Rainfall — what is at each admin level? When is the prelim data?
+print(rain.groupby("adm_level")["PCODE"].nunique().to_string())
+print("\nlevel 1:", sorted(rain.loc[rain["adm_level"] == 1, "PCODE"].unique()))
+print("\nlevel 2:", sorted(rain.loc[rain["adm_level"] == 2, "PCODE"].unique()))
+print("\nprelim dates:", rain.loc[rain["version"] == "prelim", "date"].dt.date.unique())
+
 
 # %% ---------- NDVI ----------
 ndvi = load_hdx_csv(FILES["ndvi"])
@@ -232,6 +238,17 @@ for c in shared:
     a, b = set(rain[c].dropna()), set(ndvi[c].dropna())
     print(f"{c}: rain={len(a)} ndvi={len(b)} both={len(a & b)}")
 
+# %% NDVI — structure check (same questions as rainfall)
+ndvi = load_hdx_csv(FILES["ndvi"])
+ndvi["date"] = pd.to_datetime(ndvi["date"], errors="coerce")
+print("shape:", ndvi.shape)
+print("columns:", list(ndvi.columns))
+print("date range:", ndvi["date"].min().date(), "->", ndvi["date"].max().date())
+print("\nunits per level:\n", ndvi.groupby("adm_level")["PCODE"].nunique().to_string())
+print("\nsame units as rainfall:", set(ndvi["PCODE"]) == set(rain["PCODE"]))
+print("\nper year (last 5):\n", ndvi.groupby(ndvi["date"].dt.year)["date"].nunique().tail(5).to_string())
+if "version" in ndvi.columns:
+    print("\nversion:\n", ndvi["version"].value_counts().to_string())
 
 # %% ---------- IPC ----------
 ipc = load_hdx_csv(FILES["ipc"])
