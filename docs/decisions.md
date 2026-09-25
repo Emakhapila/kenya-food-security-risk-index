@@ -28,6 +28,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-016 | FEWS NET retail maize (via FAO FPMA) as primary price source | Accepted | 2026-09-24 |
 | DL-017 | County rainfall and NDVI estimated from available units (pixel-weighted) | Accepted | 2026-09-24 |
 | DL-018 | IPC validation target: share of population in Phase 3+ (current period) | Accepted (time alignment open) | 2026-09-25 |
+| DL-019 | Raw layer deduplicated by row hash | Accepted | 2026-09-25 |
 
 ---
 
