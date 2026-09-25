@@ -38,4 +38,9 @@
 
 ## IPC
 
-- To profile.
+## IPC Acute Food Insecurity — Kenya (HDX)
+
+- **File:** ipc_ken_area_long.csv (full history; the `_latest` files hold only the most recent analysis)
+- **Grain:** analysis × area × validity period (current / first projection) × phase (1–5, 3+, all); population numbers and rounded percentages
+- **Coverage:** 12 current analyses, 2021-02 to 2026-07 (twice yearly); about 23 areas each; all 16 FEWS NET counties included
+- **Issues:** inconsistent area names (case, abbreviations); sub-county splits for Marsabit and Turkana in 2024-07 only; refugee camps listed as areas; `Level 1` labels unstable
