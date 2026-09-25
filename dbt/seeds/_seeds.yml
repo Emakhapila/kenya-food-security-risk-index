@@ -1,0 +1,41 @@
+version: 2
+
+seeds:
+  - name: dim_county
+    description: >
+      Kenya's 47 counties. Codes and names from the OCHA COD-AB gazetteer;
+      2019 census population from OCHA COD-PS (original source: KNBS).
+      Built by scripts/build_reference.py.
+    columns:
+      - name: county_pcode
+        description: Official county code, KE001 to KE047.
+        data_tests: [unique, not_null]
+      - name: county_code
+        data_tests: [unique, not_null]
+      - name: county_name
+        data_tests: [unique, not_null]
+      - name: population_2019
+        data_tests: [not_null]
+
+  - name: county_alias
+    description: >
+      Every county-like name used by each raw source, mapped to an official
+      county code (DL-006). Built by scripts/build_reference.py.
+    columns:
+      - name: source
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["wfp_prices", "fpma", "ipc"]
+      - name: raw_name
+        data_tests: [not_null]
+      - name: county_pcode
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_county')
+                field: county_pcode
+      - name: include
+        data_tests: [not_null]
