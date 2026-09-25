@@ -1,0 +1,39 @@
+name: kfsri
+version: "1.0.0"
+profile: kfsri
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# Schemas: raw (Python ingestion), reference (seeds), staging (views), marts (tables).
+models:
+  kfsri:
+    staging:
+      +schema: staging
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
+
+seeds:
+  kfsri:
+    +schema: reference
+    dim_county:
+      +column_types:
+        county_pcode: text
+        county_code: integer
+        county_name: text
+        area_sqkm: numeric
+        population_2019: bigint
+    county_alias:
+      +column_types:
+        source: text
+        raw_name: text
+        county_pcode: text
+        include: boolean
+        match_method: text
+        note: text
