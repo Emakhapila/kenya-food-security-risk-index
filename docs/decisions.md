@@ -9,7 +9,7 @@ This log records the significant design decisions in this project: what was deci
 ## Index
 
 | ID | Decision | Status | Date |
-|--- |---|--- |---|
+| --- | --- | --- | --- |
 | DL-001 | Composite risk index + price forecast, not an IPC classifier | Accepted | 2026-09-23 |
 | DL-002 | Pre-aggregated subnational climate indicators, not raw rasters | Accepted | 2026-09-23 |
 | DL-003 | Hosted PostgreSQL, not local Docker | Accepted (provider open) | 2026-09-23 |
@@ -27,6 +27,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-015 | Market type classification; index uses town markets only | Accepted | 2026-09-23 |
 | DL-016 | FEWS NET retail maize (via FAO FPMA) as primary price source | Accepted | 2026-09-24 |
 | DL-017 | County rainfall and NDVI estimated from available units (pixel-weighted) | Accepted | 2026-09-24 |
+| DL-018 | IPC validation target: share of population in Phase 3+ (current period) | Accepted (time alignment open) | 2026-09-25 |
 
 ---
 
@@ -50,6 +51,8 @@ This log records the significant design decisions in this project: what was deci
 **Consequences.** Validation against IPC only covers ASAL counties, so the index is unvalidated for the other 24. This must be stated as a limitation.
 
 **Revisit if.** A denser label becomes available (e.g. monthly county-level NDMA phases in structured form).
+
+Refined by DL-018: validation uses the share of population in Phase 3+, not phase categories.
 
 ---
 
@@ -344,6 +347,27 @@ The WFP subnational NDVI file covers exactly the same 81 units (confirmed by PCO
 **Consequences.** County rainfall for 39 counties is an approximation based on part of the county's area. Large counties with diverse rainfall patterns (e.g. Garissa, Kitui) are most affected.
 
 **Revisit if.** Index validation against IPC is noticeably weaker for proxy counties than for admin-1 counties.
+
+---
+
+## DL-018 — IPC validation target: share of population in Phase 3+ (current period)
+
+**Date:** 2026-09-25 · **Status:** Accepted (time alignment open)
+
+**Context.** The IPC Kenya area-level file (ipc_ken_area_long.csv) is long format: analysis × area × validity period × phase, with population numbers and rounded percentages. It contains 12 analyses with a `current` period, twice yearly from 2021-02 to 2026-07 (2022-04 is projection-only), covering about 23 areas per analysis. All 16 counties with FEWS NET prices (DL-016) are included.
+
+**Decision.**
+
+- Validation target: share of population in Phase 3 or worse, per county per analysis, from `current` rows only. Projections are IPC's own forecasts and are not used.
+- The share is computed from `Number` (Phase 3+ ÷ all), not from the rounded `Percentage` column.
+- Sub-county rows (Marsabit ×4, Turkana ×5, July 2024 only) are summed to county level by population. If an analysis has both a county row and sub-county rows, the county row is used.
+- Refugee areas (Dadaab, Kakuma, Kalobeyei) are excluded, consistent with DL-015.
+- The `Level 1` grouping is ignored; its labels change between analyses.
+- Area name variants (case, "Taita", "Tharaka", "Lamu county", "Homabay") are resolved through the county alias table.
+
+**Open:** how to align index months with an analysis. Options: the index in the analysis month; the mean over the preceding 3 months; or the mean over the validity window (`From`–`To`). To be decided at the validation stage and recorded here.
+
+**Consequences.** About 270 county-analysis points. A continuous target supports correlation and rank-based validation rather than matching coarse phase categories (refines DL-001).
 
 ---
 

@@ -252,14 +252,28 @@ if "version" in ndvi.columns:
 
 # %% ---------- IPC ----------
 ipc = load_hdx_csv(FILES["ipc"])
-overview(ipc, "ipc")
+print("shape:", ipc.shape)
+print("columns:", list(ipc.columns))
+print(ipc.head(5).to_string())
 
-# %% IPC — analysis periods, area names, phase columns
-for col in ipc.columns:
-    if any(k in col.lower() for k in ["date", "period", "validity", "area", "phase", "level", "adm"]):
-        print(f"\n{col}: {ipc[col].nunique()} unique")
-        print(ipc[col].value_counts().head(10).to_string())
+# %% IPC — analyses, validity periods, phases, groupings
+for col in ["Validity period", "Phase", "Level 1"]:
+    print(f"\n{col}:\n{ipc[col].value_counts().to_string()}")
 
+ipc["analysis_date"] = pd.to_datetime(ipc["Date of analysis"], format="%b %Y")
+print("\nanalyses:", sorted(ipc["analysis_date"].dt.strftime("%Y-%m").unique()))
+
+# %% IPC — areas per analysis (current period only)
+cur = ipc[ipc["Validity period"] == "current"]
+print(cur.groupby("analysis_date")["Area"].nunique().to_string())
+print("\nall areas:", sorted(cur["Area"].unique()))
+
+# %% IPC — do county and sub-county rows appear in the same analysis?
+split = cur[cur["Area"].str.contains("marsabit|turkana", case=False)]
+print(split.groupby("analysis_date")["Area"].unique().to_string())
+
+# %% IPC — full area list for the one split analysis
+print(sorted(split.loc[split["analysis_date"] == "2024-07-01", "Area"].unique()))
 
 # %% ---------- CROSS-SOURCE: county naming ----------
 # Collect every county-like name from each source to see the mismatches dim_county must fix.
