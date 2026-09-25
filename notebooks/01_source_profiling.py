@@ -275,6 +275,17 @@ print(split.groupby("analysis_date")["Area"].unique().to_string())
 # %% IPC — full area list for the one split analysis
 print(sorted(split.loc[split["analysis_date"] == "2024-07-01", "Area"].unique()))
 
+# %% IPC — does each area cover a whole county? (IPC population vs 2019 census)
+census = pop1.set_index("ADM1_PCODE")["T_TL"]
+code_by_key = {name_key(n): c for n, c in zip(adm1["ADM1_EN"], adm1["ADM1_PCODE"])}
+temp_alias = {"Taita": "Taita Taveta", "Tharaka": "Tharaka Nithi"}
+
+p = cur[cur["Phase"] == "all"].copy()
+p["Number"] = pd.to_numeric(p["Number"])
+p["pcode"] = p["Area"].replace(temp_alias).map(lambda n: code_by_key.get(name_key(n)))
+p["ratio"] = p["Number"] / p["pcode"].map(census)
+print(p.groupby("Area")["ratio"].median().round(2).sort_values().to_string())
+
 # %% ---------- CROSS-SOURCE: county naming ----------
 # Collect every county-like name from each source to see the mismatches dim_county must fix.
 def names(df, candidates):
@@ -346,6 +357,54 @@ for c in ["Garissa", "Makueni", "Taita Taveta", "Wajir"]:
                                 end=("month", "max"), length=("price", "size"))
     print(f"\n{c}")
     print(runs[runs["length"] >= 6].to_string(index=False))
+
+# %% ---------- REFERENCE: official boundaries + population ----------
+def show_workbook(filename: str) -> dict:
+    book = pd.read_excel(RAW / filename, sheet_name=None)
+    print(f"\n##### {filename}: {len(book)} sheets")
+    for name, df in book.items():
+        print(f"\n--- sheet '{name}': {df.shape}")
+        print(list(df.columns))
+        print(df.head(3).to_string())
+    return book
+
+gaz = show_workbook("ken_adminboundaries_tabulardata.xlsx")
+popbook = show_workbook("ken_admpop_2019.xlsx")
+
+# %% REFERENCE — do rainfall and population codes match the official boundaries?
+adm1 = gaz["ADM1"]
+adm2 = gaz["ADM2"]
+pop1 = popbook["ken_admpop_ADM1_2019"]
+rain = load_hdx_csv(FILES["rainfall"])
+
+r1 = set(rain.loc[rain["adm_level"] == 1, "PCODE"])
+r2 = set(rain.loc[rain["adm_level"] == 2, "PCODE"])
+print("rain adm1 codes not in boundaries:", r1 - set(adm1["ADM1_PCODE"]))
+print("rain adm2 codes not in boundaries:", r2 - set(adm2["ADM2_PCODE"]))
+print("population codes match boundaries:", set(pop1["ADM1_PCODE"]) == set(adm1["ADM1_PCODE"]))
+print("\ncounties with a direct (adm1) rainfall row:")
+print(adm1[adm1["ADM1_PCODE"].isin(r1)][["ADM1_PCODE", "ADM1_EN"]].to_string(index=False))
+
+# %% REFERENCE — which source names don't match an official county name?
+import re
+
+def name_key(s) -> str:
+    k = re.sub(r"[^a-z]", "", str(s).lower())   # drop case, spaces, hyphens, apostrophes
+    return re.sub(r"county$", "", k)            # "Lamu county" -> "lamu"
+
+official = {name_key(n): n for n in adm1["ADM1_EN"]}
+prices = load_hdx_csv(FILES["prices"])
+fpma_cols = pd.read_csv(RAW / "fpma_ken_maize_white_retail_2026-09-24.csv", nrows=0).columns
+
+sources = {
+    "wfp_prices (admin2)": prices["admin2"].dropna().unique(),
+    "fpma": [c.split(", ")[2] for c in fpma_cols if c.count(", ") >= 3],
+    "ipc": cur["Area"].unique(),
+}
+for src, names in sources.items():
+    unmatched = sorted({n for n in names if name_key(n) not in official})
+    print(f"\n{src}: {len(set(names))} names, {len(unmatched)} unmatched")
+    print(unmatched)
 
 # %% [markdown]
 # ## Write up in docs/data-sources.md, one section per source:

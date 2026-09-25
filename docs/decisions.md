@@ -364,6 +364,7 @@ The WFP subnational NDVI file covers exactly the same 81 units (confirmed by PCO
 - Refugee areas (Dadaab, Kakuma, Kalobeyei) are excluded, consistent with DL-015.
 - The `Level 1` grouping is ignored; its labels change between analyses.
 - Area name variants (case, "Taita", "Tharaka", "Lamu county", "Homabay") are resolved through the county alias table.
+- Partial-county IPC areas: comparing IPC's total population with the 2019 census showed seven areas cover only part of their county (Kiambu 0.06, Nyeri 0.27, Machakos 0.39, Tharaka 0.45, Embu 0.46, Meru 0.51, Tharaka Nithi 0.72); all others are 1.06–1.22. Staging computes `ipc_coverage_ratio` per county per analysis, and validation reports whole-county and partial-county areas separately.
 
 **Open:** how to align index months with an analysis. Options: the index in the analysis month; the mean over the preceding 3 months; or the mean over the validity window (`From`–`To`). To be decided at the validation stage and recorded here.
 
