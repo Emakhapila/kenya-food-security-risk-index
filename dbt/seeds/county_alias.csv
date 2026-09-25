@@ -1,0 +1,90 @@
+source,raw_name,county_pcode,include,match_method,note
+wfp_prices,Baringo,KE030,True,auto,
+wfp_prices,Garissa,KE007,True,auto,
+wfp_prices,Ijara,KE007,True,manual,former district; now a Garissa sub-county
+wfp_prices,Isiolo,KE011,True,auto,
+wfp_prices,Kajiado,KE034,True,auto,
+wfp_prices,Kilifi,KE003,True,auto,
+wfp_prices,Kisumu,KE042,True,auto,
+wfp_prices,Kitui,KE015,True,auto,
+wfp_prices,Kwale,KE002,True,auto,
+wfp_prices,Machakos,KE016,True,auto,
+wfp_prices,Makueni,KE017,True,auto,
+wfp_prices,Mandera,KE009,True,auto,
+wfp_prices,Marsabit,KE010,True,auto,
+wfp_prices,Meru North,KE012,True,manual,former district
+wfp_prices,Meru South,KE013,True,manual,"former district; now in Tharaka-Nithi, not Meru"
+wfp_prices,Mombasa,KE001,True,auto,
+wfp_prices,Moyale,KE010,True,manual,Kenyan Moyale is in Marsabit County
+wfp_prices,Nairobi,KE047,True,auto,
+wfp_prices,Nakuru,KE032,True,auto,
+wfp_prices,Nyeri,KE019,True,auto,
+wfp_prices,Samburu,KE025,True,auto,
+wfp_prices,Taita Taveta,KE006,True,auto,
+wfp_prices,Tana River,KE004,True,auto,
+wfp_prices,Turkana,KE023,True,auto,
+wfp_prices,Uasin Gishu,KE027,True,auto,
+wfp_prices,Wajir,KE008,True,auto,
+wfp_prices,West Pokot,KE024,True,auto,
+fpma,Embu-Mbeere,KE014,True,manual,"Mbeere, the drier eastern part of Embu"
+fpma,Garissa,KE007,True,auto,
+fpma,Isiolo,KE011,True,auto,
+fpma,Kilifi,KE003,True,auto,
+fpma,Kitui,KE015,True,auto,
+fpma,Kwale,KE002,True,auto,
+fpma,Lamu,KE005,True,auto,
+fpma,Makueni,KE017,True,auto,
+fpma,Mandera,KE009,True,auto,
+fpma,Marsabit,KE010,True,auto,
+fpma,Meru,KE012,True,auto,
+fpma,Taita Taveta,KE006,True,auto,
+fpma,Tana River,KE004,True,auto,
+fpma,Tharaka Nithi,KE013,True,auto,
+fpma,Turkana,KE023,True,auto,
+fpma,Wajir,KE008,True,auto,
+ipc,Baringo,KE030,True,auto,
+ipc,Dadaab,KE007,False,manual,"refugee camp; excluded (DL-015, DL-018)"
+ipc,Elgeyo-Marakwet,KE028,True,auto,
+ipc,Embu,KE014,True,auto,
+ipc,Garissa,KE007,True,auto,
+ipc,Homabay,KE043,True,auto,
+ipc,Isiolo,KE011,True,auto,
+ipc,Kajiado,KE034,True,auto,
+ipc,Kakuma,KE023,False,manual,"refugee camp; excluded (DL-015, DL-018)"
+ipc,Kalobeyei,KE023,False,manual,"refugee settlement; excluded (DL-015, DL-018)"
+ipc,Kiambu,KE022,True,auto,
+ipc,Kilifi,KE003,True,auto,
+ipc,Kitui,KE015,True,auto,
+ipc,Kwale,KE002,True,auto,
+ipc,Laikipia,KE031,True,auto,
+ipc,Lamu,KE005,True,auto,
+ipc,Lamu county,KE005,True,auto,
+ipc,Machakos,KE016,True,auto,
+ipc,Makueni,KE017,True,auto,
+ipc,Mandera,KE009,True,auto,
+ipc,Marsabit,KE010,True,auto,
+ipc,Marsabit - laisamis,KE010,True,rule,sub-county area; sum to county by population
+ipc,Marsabit - moyale,KE010,True,rule,sub-county area; sum to county by population
+ipc,Marsabit - north horr,KE010,True,rule,sub-county area; sum to county by population
+ipc,Marsabit - saku,KE010,True,rule,sub-county area; sum to county by population
+ipc,Meru,KE012,True,auto,
+ipc,Migori,KE044,True,auto,
+ipc,Narok,KE033,True,auto,
+ipc,Nyeri,KE019,True,auto,
+ipc,Samburu,KE025,True,auto,
+ipc,TANA RIVER,KE004,True,auto,
+ipc,Taita,KE006,True,manual,abbreviated name
+ipc,Taita Taveta,KE006,True,auto,
+ipc,Tana River,KE004,True,auto,
+ipc,Tana river,KE004,True,auto,
+ipc,Tharaka,KE013,True,manual,IPC area covers part of the county
+ipc,Tharaka Nithi,KE013,True,auto,
+ipc,Turkana,KE023,True,auto,
+ipc,Turkana central,KE023,True,rule,sub-county area; sum to county by population
+ipc,Turkana east-kibish-loima,KE023,True,rule,sub-county area; sum to county by population
+ipc,Turkana north,KE023,True,rule,sub-county area; sum to county by population
+ipc,Turkana south,KE023,True,rule,sub-county area; sum to county by population
+ipc,Turkana west,KE023,True,rule,sub-county area; sum to county by population
+ipc,Wajir,KE008,True,auto,
+ipc,West Pokot,KE024,True,auto,
+ipc,West pokot,KE024,True,auto,
