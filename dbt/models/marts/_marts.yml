@@ -15,3 +15,19 @@ models:
         description: True within runs of identical consecutive prices of at least var('flat_run_min_months').
       - name: is_low_resolution
         description: County series reported in coarse steps (Garissa); evaluated separately.
+
+  - name: fct_climate_county_monthly
+    description: >
+      Monthly rainfall and NDVI per county with anomalies as % of the long-term
+      average (100 = normal). County values come from the county-level unit where
+      available, otherwise a pixel-weighted mean of sub-county units (DL-017).
+    columns:
+      - name: county_pcode
+        data_tests: [not_null]
+      - name: month
+        data_tests: [not_null]
+      - name: climate_source_level
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["adm1", "adm2_proxy"]

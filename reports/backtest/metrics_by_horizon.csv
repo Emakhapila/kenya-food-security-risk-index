@@ -1,7 +1,7 @@
-series_group,horizon,n,naive_mae,naive_mape,seasonal_naive_mae,seasonal_naive_mape,sarimax_mae,sarimax_mape,lightgbm_mae,lightgbm_mape,sarimax_skill_vs_naive,lightgbm_skill_vs_naive
-low_resolution,1,24,1.875,1.806,5.208,4.931,2.084,2.004,2.203,2.126,-0.112,-0.175
-low_resolution,2,23,2.348,2.261,4.435,4.219,2.374,2.299,2.691,2.591,-0.011,-0.146
-low_resolution,3,22,2.364,2.282,3.773,3.604,2.497,2.416,3.566,3.431,-0.057,-0.509
-main,1,360,2.639,4.258,9.211,15.777,2.754,4.452,2.725,4.357,-0.044,-0.033
-main,2,345,3.716,5.916,8.574,14.414,3.799,6.057,3.801,6.092,-0.023,-0.023
-main,3,330,4.676,7.546,8.136,13.402,4.682,7.586,4.984,8.096,-0.001,-0.066
+series_group,horizon,n,naive_mae,naive_mape,seasonal_naive_mae,seasonal_naive_mape,sarimax_mae,sarimax_mape,sarimax_climate_mae,sarimax_climate_mape,lightgbm_mae,lightgbm_mape,lightgbm_climate_mae,lightgbm_climate_mape,sarimax_skill_vs_naive,sarimax_climate_skill_vs_naive,lightgbm_skill_vs_naive,lightgbm_climate_skill_vs_naive
+low_resolution,1,53,2.906,3.07,7.66,7.924,3.034,3.192,3.18,3.364,3.203,3.417,3.29,3.481,-0.044,-0.094,-0.102,-0.132
+low_resolution,2,51,4.863,5.176,7.356,7.528,4.76,5.068,5.001,5.354,4.649,4.932,5.079,5.328,0.021,-0.028,0.044,-0.044
+low_resolution,3,49,5.837,6.214,7.163,7.276,5.827,6.198,6.107,6.513,5.6,5.908,5.855,6.148,0.002,-0.046,0.04,-0.003
+main,1,795,3.489,5.538,12.734,19.224,3.607,5.688,3.699,5.871,3.402,5.335,3.451,5.43,-0.034,-0.06,0.025,0.011
+main,2,765,5.195,8.236,13.017,19.634,5.331,8.381,5.349,8.409,4.979,7.834,4.945,7.653,-0.026,-0.03,0.041,0.048
+main,3,735,6.73,10.724,13.337,20.093,6.837,10.807,6.76,10.674,6.833,10.739,6.336,9.874,-0.016,-0.004,-0.015,0.059

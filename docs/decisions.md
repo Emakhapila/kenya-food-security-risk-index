@@ -30,6 +30,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-018 | IPC validation target: share of population in Phase 3+ (current period) | Accepted (time alignment open) | 2026-09-25 |
 | DL-019 | Raw layer deduplicated by row hash | Accepted | 2026-09-25 |
 | DL-020 | Price forecast v1: baselines not beaten; next test climate features | Accepted | 2026-09-28 |
+| DL-021 | Climate features: help at 2–3 months, not yet significant | Accepted | 2026-09-28 |
 
 ---
 
@@ -408,6 +409,35 @@ The WFP subnational NDVI file covers exactly the same 81 units (confirmed by PCO
 - LightGBM predicts log changes, not levels, because tree models cannot extrapolate beyond training prices.
 
 **Consequences.** The project's value rests on the risk index and on testing whether climate signals add predictive skill, not on price history alone.
+
+---
+
+## DL-021 — Climate features: help at 2–3 months, not yet significant
+
+**Date:** 2026-09-28 · **Status:** Accepted (refines DL-020; resolves DL-008; updated with 60-origin test)
+
+**Context.** Added rainfall and NDVI anomalies (fct_climate_county_monthly, DL-017) to both models. LightGBM gets current and 3-month-lagged anomalies plus the cross-county average; SARIMAX gets 3-month rainfall and NDVI anomalies lagged 3 months as exogenous inputs, so no future climate values are needed for 1–3 month forecasts (resolves DL-008: lagged observed values). A month's climate is assumed available when its price is. Leakage test passed for both climate models. Differences carry 95% bootstrap intervals from resampling origins.
+
+**Result (24 origins, 2024-07 to 2026-06, main series, MAE KES/kg at h=1/2/3).**
+
+- Naive 2.64 / 3.72 / 4.68
+- SARIMAX 2.75 / 3.80 / 4.68 → with climate 2.84 / 3.75 / 4.46
+- LightGBM 2.73 / 3.80 / 4.98 → with climate 2.77 / 3.58 / 4.46
+- At h=1 both SARIMAX variants are significantly worse than naive. At h=3 both climate models are about 5% better than naive, and climate improves LightGBM by 0.52 (95% CI −1.26 to +0.08). No difference is significant at 95%.
+- Garissa (low resolution) is worse with climate at every horizon.
+**60-origin test (2021-07 to 2026-06, includes the 2021–2023 drought; origins in the 2023 gap skipped).**
+- Naive 3.49 / 5.20 / 6.73; SARIMAX 3.61 / 5.33 / 6.84 → with climate 3.70 / 5.35 / 6.76; LightGBM 3.40 / 4.98 / 6.83 → with climate 3.45 / 4.95 / 6.34.
+- Climate improves LightGBM at h=3 by 0.50 KES/kg (95% CI −1.02 to +0.01; MAPE 10.7% → 9.9%), almost identical to the 24-origin result (0.52). SARIMAX's climate gain does not persist; climate makes SARIMAX significantly worse at h=1.
+- Interpretation (hypothesis): drought effects on prices are non-linear, which trees capture and linear exogenous terms do not.
+- Intervals resample origins independently; overlapping multi-month forecasts mean a block bootstrap would give somewhat wider intervals.
+
+**Decision.**
+
+- Naive remains the published 1-month forecast.
+- Climate-augmented models are the candidates for 2–3 month forecasts, pending a longer test.
+- Extend the backtest to 60 origins to include the 2021–2023 drought.
+
+**Consequences.** Supports the project's premise that climate signals carry information price history lacks, at the horizons the mechanism predicts, but the evidence is not yet conclusive.
 
 ---
 

@@ -21,3 +21,40 @@ models:
           - accepted_values:
               arguments:
                 values: ["KES/Kg"]
+
+  - name: stg_rainfall__dekadal
+    description: CHIRPS rainfall per admin unit and dekad (WFP), latest version of each value.
+    columns:
+      - name: county_pcode
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_county')
+                field: county_pcode
+      - name: dekad_start
+        data_tests: [not_null]
+      - name: adm_level
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+                quote: false
+      - name: version
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["final", "prelim"]
+
+  - name: stg_ndvi__dekadal
+    description: MODIS NDVI per admin unit and dekad (WFP), latest version of each value.
+    columns:
+      - name: county_pcode
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_county')
+                field: county_pcode
+      - name: dekad_start
+        data_tests: [not_null]
