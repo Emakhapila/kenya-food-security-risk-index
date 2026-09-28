@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: fct_maize_price_monthly
+    description: >
+      Retail white maize price (KES/kg) per county per month, with every month
+      present (missing = NULL). Flags long flat runs (possible carried-forward
+      values) and low-resolution series (DL-016). Input to the price forecast.
+    columns:
+      - name: county_pcode
+        data_tests: [not_null]
+      - name: month
+        data_tests: [not_null]
+      - name: is_flat_run
+        description: True within runs of identical consecutive prices of at least var('flat_run_min_months').
+      - name: is_low_resolution
+        description: County series reported in coarse steps (Garissa); evaluated separately.
