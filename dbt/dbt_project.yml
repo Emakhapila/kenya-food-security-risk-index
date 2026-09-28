@@ -9,6 +9,10 @@ test-paths: ["tests"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
+vars:
+  flat_run_min_months: 6            # DL-016
+  low_resolution_counties: ["KE007"]  # Garissa (DL-016)
+
 # Schemas: raw (Python ingestion), reference (seeds), staging (views), marts (tables).
 models:
   kfsri:

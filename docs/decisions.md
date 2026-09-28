@@ -29,6 +29,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-017 | County rainfall and NDVI estimated from available units (pixel-weighted) | Accepted | 2026-09-24 |
 | DL-018 | IPC validation target: share of population in Phase 3+ (current period) | Accepted (time alignment open) | 2026-09-25 |
 | DL-019 | Raw layer deduplicated by row hash | Accepted | 2026-09-25 |
+| DL-020 | Price forecast v1: baselines not beaten; next test climate features | Accepted | 2026-09-28 |
 
 ---
 
@@ -370,6 +371,43 @@ The WFP subnational NDVI file covers exactly the same 81 units (confirmed by PCO
 **Open:** how to align index months with an analysis. Options: the index in the analysis month; the mean over the preceding 3 months; or the mean over the validity window (`From`–`To`). To be decided at the validation stage and recorded here.
 
 **Consequences.** About 270 county-analysis points. A continuous target supports correlation and rank-based validation rather than matching coarse phase categories (refines DL-001).
+
+---
+
+## DL-019 — Raw layer deduplicated by row hash
+
+**Date:** 2026-09-25 · **Status:** Accepted (refines DL-005)
+
+**Context.** Several sources publish their full history in every file (rainfall alone is about 16 MB). Appending whole files each month would fill the Neon free tier (0.5 GB) within about a year while storing mostly unchanged rows.
+
+**Decision.**
+
+- Every load is recorded in `raw.load_log` (source, file name, URL, SHA-256, row counts, status, timestamps).
+- A file identical to the last successful load of the same source is skipped.
+- Otherwise each row is hashed from its non-NULL column=value pairs, and only rows with a new hash are inserted (`row_hash` is unique). Revised values, such as a `prelim` rainfall row later published as `final`, arrive as new rows; nothing is updated or deleted.
+- All data columns are stored as text; typing happens in staging. New source columns are added automatically and noted in the log.
+- NULLs are excluded from the hash so a new empty column does not duplicate existing rows (found in testing).
+- FPMA's wide export is reshaped to long (date, series, price) at load time, without changing values, so new counties don't change the table's columns.
+
+**Consequences.** Storage grows only with real changes. Staging must select the latest version of each natural key. Identical duplicate rows within one file collapse to a single row (none found in profiling).
+
+---
+
+## DL-020 — Price forecast v1: baselines not beaten; next test climate features
+
+**Date:** 2026-09-28 · **Status:** Accepted
+
+**Context.** Rolling-origin backtest (DL-010) on FEWS NET retail maize (DL-016), 15 main counties plus Garissa reported separately, 24 monthly origins (2024-07 to 2026-06), horizons 1–3 months. Models: naive (last value), seasonal naive, per-county SARIMAX(1,1,1)(1,0,0,12) on log price, and a global LightGBM per horizon predicting log change from the origin. Leakage test: corrupting all data after an origin leaves that origin's forecasts unchanged.
+
+**Result (main series, MAE KES/kg at h=1/2/3).** Naive 2.64 / 3.72 / 4.68; SARIMAX 2.75 / 3.80 / 4.68; LightGBM 2.73 / 3.80 / 4.98; seasonal naive 9.21 / 8.57 / 8.14. Skill vs naive between −0.066 and −0.001. SARIMAX and LightGBM each beat naive in 4 of 15 counties at h=1.
+
+**Decision.**
+
+- Naive is the forecast to beat and the default published forecast until a model shows consistent skill.
+- Next experiment: add lagged rainfall and NDVI anomalies as features (resolves DL-008 in favour of lagged observed values).
+- LightGBM predicts log changes, not levels, because tree models cannot extrapolate beyond training prices.
+
+**Consequences.** The project's value rests on the risk index and on testing whether climate signals add predictive skill, not on price history alone.
 
 ---
 

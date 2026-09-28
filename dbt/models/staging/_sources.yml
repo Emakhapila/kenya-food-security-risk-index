@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw tables loaded by the Python ingestion layer (ingest/). All data columns are text.
+    schema: raw
+    tables:
+      - name: load_log
+        description: One row per ingestion attempt (DL-019).
+      - name: fpma
+        description: >
+          FEWS NET retail white maize prices via FAO GIEWS FPMA, reshaped to long
+          at load time (DL-016). One row per export file, month and series.
+      - name: wfp_prices
+      - name: rainfall
+      - name: ndvi
+      - name: ipc

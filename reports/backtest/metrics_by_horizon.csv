@@ -1,0 +1,7 @@
+series_group,horizon,n,naive_mae,naive_mape,seasonal_naive_mae,seasonal_naive_mape,sarimax_mae,sarimax_mape,lightgbm_mae,lightgbm_mape,sarimax_skill_vs_naive,lightgbm_skill_vs_naive
+low_resolution,1,24,1.875,1.806,5.208,4.931,2.084,2.004,2.203,2.126,-0.112,-0.175
+low_resolution,2,23,2.348,2.261,4.435,4.219,2.374,2.299,2.691,2.591,-0.011,-0.146
+low_resolution,3,22,2.364,2.282,3.773,3.604,2.497,2.416,3.566,3.431,-0.057,-0.509
+main,1,360,2.639,4.258,9.211,15.777,2.754,4.452,2.725,4.357,-0.044,-0.033
+main,2,345,3.716,5.916,8.574,14.414,3.799,6.057,3.801,6.092,-0.023,-0.023
+main,3,330,4.676,7.546,8.136,13.402,4.682,7.586,4.984,8.096,-0.001,-0.066
