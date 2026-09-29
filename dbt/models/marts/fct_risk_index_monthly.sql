@@ -6,7 +6,7 @@
 --   rainfall   3-month total vs the same calendar window in earlier years  (1 - pct)
 --   vegetation monthly NDVI vs the same calendar month in earlier years    (1 - pct)
 --   price      log price minus the mean log price of the same month in the
---              3 previous years, vs all earlier months                     (pct)
+--              3 previous years (at least 2 present), vs all earlier months (pct)
 --
 -- Variant columns require all of their components, so the validation compares
 -- variants on identical county-months. risk_index is the published value: the
@@ -41,17 +41,23 @@ rain_3m as (
 ),
 
 price_measure as (
-    -- same-month comparison removes seasonality; all 3 earlier years required
+    -- same-month comparison removes seasonality. At least 2 of the 3 earlier
+    -- years are required, so a source-wide gap (FEWS NET published nothing in
+    -- Feb-Jul 2023) does not remove those months for the following 3 years
     select
         p.county_pcode,
         p.month,
-        p.log_price - (p12.log_price + p24.log_price + p36.log_price) / 3   as price_dev
+        case when num_nonnulls(p12.log_price, p24.log_price, p36.log_price) >= 2 then
+            p.log_price
+            - (coalesce(p12.log_price, 0) + coalesce(p24.log_price, 0) + coalesce(p36.log_price, 0))
+              / num_nonnulls(p12.log_price, p24.log_price, p36.log_price)
+        end                                                         as price_dev
     from {{ ref('fct_maize_price_monthly') }} p
-    join {{ ref('fct_maize_price_monthly') }} p12
+    left join {{ ref('fct_maize_price_monthly') }} p12
       on p12.county_pcode = p.county_pcode and p12.month = (p.month - interval '12 months')::date
-    join {{ ref('fct_maize_price_monthly') }} p24
+    left join {{ ref('fct_maize_price_monthly') }} p24
       on p24.county_pcode = p.county_pcode and p24.month = (p.month - interval '24 months')::date
-    join {{ ref('fct_maize_price_monthly') }} p36
+    left join {{ ref('fct_maize_price_monthly') }} p36
       on p36.county_pcode = p.county_pcode and p36.month = (p.month - interval '36 months')::date
 ),
 
