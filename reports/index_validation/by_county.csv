@@ -1,0 +1,23 @@
+county_pcode,county_name,n_analyses,climate_source_level,mean_share_phase3plus,spearman_v2
+KE030,Baringo,11,adm2_proxy,0.168,0.682
+KE028,Elgeyo-Marakwet,1,adm2_proxy,0.0,
+KE007,Garissa,12,adm2_proxy,0.254,0.407
+KE043,Homa Bay,1,adm1,0.0,
+KE011,Isiolo,12,adm2_proxy,0.233,0.607
+KE034,Kajiado,12,adm2_proxy,0.063,0.659
+KE003,Kilifi,12,adm2_proxy,0.088,0.242
+KE015,Kitui,12,adm2_proxy,0.112,0.755
+KE002,Kwale,12,adm2_proxy,0.112,0.207
+KE031,Laikipia,12,adm2_proxy,0.092,0.423
+KE005,Lamu,12,adm2_proxy,0.112,0.495
+KE017,Makueni,12,adm2_proxy,0.117,0.688
+KE009,Mandera,12,adm2_proxy,0.321,0.723
+KE010,Marsabit,12,adm1,0.307,0.681
+KE044,Migori,1,adm2_proxy,0.0,
+KE033,Narok,12,adm2_proxy,0.046,0.474
+KE025,Samburu,12,adm2_proxy,0.233,0.75
+KE006,Taita Taveta,12,adm2_proxy,0.063,0.774
+KE004,Tana River,12,adm1,0.258,0.687
+KE023,Turkana,12,adm1,0.333,0.848
+KE008,Wajir,12,adm1,0.271,0.541
+KE024,West Pokot,12,adm2_proxy,0.058,0.031
