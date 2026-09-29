@@ -13,6 +13,8 @@ vars:
   flat_run_min_months: 6            # DL-016
   low_resolution_counties: ["KE007"]  # Garissa (DL-016)
   ipc_partial_coverage_max: 0.9     # DL-018: partial areas 0.06-0.72, whole counties 1.06-1.22
+  index_min_history_years: 10       # DL-022: earlier years needed for a rainfall/NDVI percentile
+  index_min_price_history_months: 36  # DL-022: earlier months needed for a price percentile
 
 # Schemas: raw (Python ingestion), reference (seeds), staging (views), marts (tables).
 models:
