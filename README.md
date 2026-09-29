@@ -1,10 +1,27 @@
 # Kenya Food Security Risk Index
 
-An end-to-end data pipeline that brings together maize prices, rainfall, vegetation and official food security assessments for Kenya's counties, and tests whether climate signals improve short-term maize price forecasts.
+An end-to-end data pipeline that brings together maize prices, rainfall, vegetation and official food security assessments for Kenya's counties. It builds a monthly county risk index, validated against the official IPC assessments, and tests whether climate signals improve short-term maize price forecasts.
 
 Food crises in Kenya's arid and semi-arid counties build up over months, but the official IPC assessments are published about twice a year. The signals in between (prices, rainfall, pasture) are spread across sources with different formats, geographies and schedules. This project reconciles them into one tested, county-level warehouse that refreshes monthly.
 
-## Headline result
+## Headline results
+
+### 1. The risk index tracks IPC food insecurity
+
+A monthly index ranks each county's recent rainfall, vegetation and maize prices against its own history (DL-022). The validation test was fixed in the decision log before any results existed. Across 12 IPC analyses (2021–2026) and 19 counties:
+
+| Within-county correlation with the IPC Phase 3+ share | Spearman ρ | 95% interval |
+|---|---|---|
+| Rainfall only | 0.42 | 0.12 to 0.64 |
+| **Rainfall + vegetation (primary)** | **0.52** | **0.20 to 0.72** |
+| Rainfall + vegetation + price (13 FEWS NET counties) | 0.60 | 0.26 to 0.75 |
+
+- **When a county's index rises, its share of people in IPC Phase 3+ tends to rise too.** The index averages the 3 months before each assessment, so it uses only information available before IPC published.
+- **Vegetation adds to rainfall** (+0.11), but the interval (−0.003 to +0.21) just includes zero: consistent evidence, not proof.
+- **Price adds nothing** once rainfall and vegetation are in (−0.02). The price variant scores higher only because it covers different counties.
+- The index measures shocks relative to each county's own history, not chronic food insecurity, so the test removes each county's average first.
+
+### 2. Climate signals help 3-month maize price forecasts
 
 Forecasting retail maize prices in 16 mostly arid and semi-arid counties, with a leakage-tested rolling-origin backtest (60 monthly origins, July 2021 to June 2026, including the 2021–2023 drought):
 
@@ -20,7 +37,7 @@ Forecasting retail maize prices in 16 mostly arid and semi-arid counties, with a
 - **The same climate data does not help SARIMAX**, which suggests the drought effect on prices is non-linear.
 - **At 1 month ahead, nothing beats naive**, which remains the published 1-month forecast.
 
-Full numbers and reasoning: DL-020 and DL-021 in the [decision log](docs/decisions.md). Summary metrics are in [`reports/backtest/`](reports/backtest/).
+Full numbers and reasoning: DL-020 to DL-023 in the [decision log](docs/decisions.md). Summary metrics are in [`reports/index_validation/`](reports/index_validation/) and [`reports/backtest/`](reports/backtest/).
 
 ## Architecture
 
@@ -109,9 +126,9 @@ Raw data is not included in this repository. The FEWS NET/FPMA data is licensed 
 
 ## Status
 
-**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features.
+**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC.
 
-**Next:** validating the risk index against IPC (plan fixed in DL-022); staging for WFP prices; automatic downloads for the HDX sources; a scheduled monthly refresh with GitHub Actions; an API and a small dashboard.
+**Next:** staging for WFP prices; automatic downloads for the HDX sources; a scheduled monthly refresh with GitHub Actions; an API and a small dashboard.
 
 ## Documentation
 

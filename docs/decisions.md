@@ -32,6 +32,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-020 | Price forecast v1: baselines not beaten; next test climate features | Accepted | 2026-09-28 |
 | DL-021 | Climate features: help at 2–3 months, not yet significant | Accepted | 2026-09-28 |
 | DL-022 | Risk index design and pre-registered validation plan | Accepted | 2026-09-29 |
+| DL-023 | Risk index validation: tracks IPC within counties | Accepted | 2026-09-29 |
 
 ---
 
@@ -495,6 +496,50 @@ Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % ano
 **Consequences.** The index can be computed for all 47 counties but validated only where IPC reports (DL-001). The validation has little statistical power with 12 analyses; a null result is possible and will be reported as found.
 
 **Revisit if.** The primary claim fails; or proxy-climate counties validate clearly worse than adm1 counties (DL-017).
+
+---
+
+## DL-023 — Risk index validation: tracks IPC within counties
+
+**Date:** 2026-09-29 · **Status:** Accepted (results of the DL-022 plan)
+
+**Context.** The validation plan in DL-022 was fixed and merged before the index was built. `modelling/validate_index.py` ran it unchanged on `fct_risk_index_ipc`: 12 IPC analyses (2021-02 to 2026-07), 281 county-analyses. Intervals are 95% percentile bootstrap intervals from 2,000 resamples of whole analyses.
+
+**Result: pre-registered claims.**
+
+| Claim | Estimate | 95% interval | Sample | Verdict |
+|---|---|---|---|---|
+| Index (variant 2, rain + NDVI) tracks IPC within counties | ρ = 0.524 | 0.199 to 0.720 | 227 rows, 19 counties | **Supported** |
+| NDVI adds to rainfall (variant 2 − variant 1) | +0.107 | −0.003 to +0.208 | 227 rows, 19 counties | Not shown |
+| Price adds to climate (variant 3 − variant 2) | −0.017 | −0.150 to +0.074 | 143 rows, 13 counties | Not shown |
+
+**Other results (context and sensitivity; not used for the claims).**
+
+- Variant 1 (rain only) 0.417 (0.119 to 0.641); variant 3 (rain + NDVI + price, FEWS NET counties) 0.600 (0.258 to 0.754). Variant 3 scores higher than variant 2 overall only because its counties differ; on the same rows the difference is −0.017.
+- Without removing county means: 0.317 (0.092 to 0.469). Chronic differences between counties add noise, as expected for a shock index.
+- Alignment: the pre-registered 3-month window (0.524) beats the analysis month alone (0.363, 0.045 to 0.582) and the validity window (0.409, 0.113 to 0.614). The window was chosen before results, so this is not selection after the fact.
+- Climate source: adm1 counties 0.613 (0.152 to 0.832; 4 counties) vs adm2-proxy counties 0.490 (0.195 to 0.691; 15 counties). The intervals overlap heavily, so DL-017's revisit trigger is not met.
+- Partial-county IPC areas: 0.725 (0.376 to 0.901; 4 counties, 48 rows). Too few counties to interpret.
+
+**Interpretation.**
+
+- The index moves with IPC within counties, using only information available before each assessment was published. This is the project's central claim, and it holds.
+- Rainfall carries most of the signal. Vegetation's gain is consistent in direction but not established, the same pattern as climate features in the price forecast (DL-021).
+- Maize prices add no information to the index once climate is included, consistent with retail prices behaving close to a random walk over 1–3 months (DL-020).
+
+**Caveats.**
+
+- 12 analyses is few clusters; percentile bootstrap intervals can be somewhat narrow with so few. The primary interval's lower bound (0.20) is far enough from zero that the conclusion does not depend on this.
+- County means are removed in-sample, so this shows that the index tracks changes in IPC. It is not a test of forecasting Phase 3+ levels ahead of time.
+- Only whole-county IPC areas in about 19 ASAL counties are covered (DL-001, DL-018).
+
+**Decision.**
+
+- Publish variant 2 (rain + NDVI) as the county risk index for all 47 counties, with the validation scope stated.
+- Keep price out of the published index for now; `risk_index` in the mart still includes it where available, so change `risk_index` to rain + NDVI before the dashboard is built.
+- The 12-month rainfall component named in DL-022 is not needed to rescue the primary claim. It stays a possible v2 improvement, tested as a new decision.
+
+**Revisit if.** More IPC analyses are published (re-run the same script; the test does not change), or the dashboard needs an index for counties outside the validated set.
 
 ---
 
