@@ -490,6 +490,8 @@ Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % ano
 - Cross-county ranking as the primary test: rejected because an anomaly index is not designed to explain chronic differences between counties.
 - A long-memory rainfall component (e.g. 12 months): not in v1. IPC responds to consecutive failed seasons (2020–2023), which a 3-month window only partly captures. It is the first thing to add if validation is weak, and would be recorded as a new decision rather than a change to this one.
 
+**Implemented (2026-09-29).** `fct_risk_index_monthly` (county × month; macro `history_percentile`) and `fct_risk_index_ipc` (one row per IPC county-analysis, with the primary 3-month window and both sensitivity windows). A 3-month rainfall total needs all 3 months complete and consecutive, so a partly published latest month cannot read as a false drought. Checks: every component recomputed independently in pandas matches the SQL to rounding; corrupting all inputs after a cut-off month leaves every earlier index value unchanged.
+
 **Consequences.** The index can be computed for all 47 counties but validated only where IPC reports (DL-001). The validation has little statistical power with 12 analyses; a null result is possible and will be reported as found.
 
 **Revisit if.** The primary claim fails; or proxy-climate counties validate clearly worse than adm1 counties (DL-017).

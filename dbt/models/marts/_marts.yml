@@ -56,3 +56,41 @@ models:
         description: IPC analysed population / 2019 census population.
       - name: is_partial_county
         description: True when ipc_coverage_ratio < var('ipc_partial_coverage_max'); validate separately.
+
+  - name: fct_risk_index_monthly
+    description: >
+      Monthly county risk index (DL-022): how unusual rainfall, vegetation and
+      maize prices are compared with the county's own earlier history, as
+      percentiles oriented so 1 = high risk. Measures shocks, not chronic food
+      insecurity. Variant columns require all their components; risk_index is
+      the mean of available components with rainfall required.
+    columns:
+      - name: county_pcode
+        data_tests: [not_null]
+      - name: month
+        data_tests: [not_null]
+      - name: risk_rain
+        description: 1 - percentile of the 3-month rainfall total vs the same calendar window in earlier years.
+        data_tests: [not_null]
+      - name: risk_ndvi
+        description: 1 - percentile of NDVI vs the same calendar month in earlier years.
+      - name: risk_price
+        description: Percentile of price_dev vs all earlier months (16 FEWS NET counties).
+      - name: price_dev
+        description: log price minus the mean log price of the same month in the 3 previous years.
+      - name: index_components
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["rain", "rain+ndvi", "rain+price", "rain+ndvi+price"]
+
+  - name: fct_risk_index_ipc
+    description: >
+      Risk index aligned to each IPC county-analysis for validation (DL-022).
+      *_pre3 is the primary alignment (mean over the 3 months before the analysis,
+      at least 2 months); *_at_analysis and *_validity are sensitivity checks only.
+    columns:
+      - name: county_pcode
+        data_tests: [not_null]
+      - name: analysis_month
+        data_tests: [not_null]
