@@ -50,7 +50,7 @@ flowchart LR
 | Ingestion | Loads each source file; skips unchanged files; stores each distinct row once, so revised values arrive as new rows and nothing is overwritten. Every run is logged. | [`ingest/`](ingest/) |
 | Reference | Official 47 counties with 2019 census population, and a table mapping every source's county spelling to an official code. The build fails if a source name is unmapped. | [`scripts/build_reference.py`](scripts/build_reference.py), [`dbt/seeds/`](dbt/seeds/) |
 | Staging | Types every column, keeps the latest version of each value, maps counties to official codes. | [`dbt/models/staging/`](dbt/models/staging/) |
-| Marts | Monthly maize price per county (every month present, gaps explicit, flat runs flagged); monthly rainfall and vegetation per county with anomalies; IPC Phase 3+ share per county per analysis, the index's validation target. | [`dbt/models/marts/`](dbt/models/marts/) |
+| Marts | Monthly maize price per county (every month present, gaps explicit, flat runs flagged); monthly rainfall and vegetation per county with anomalies; IPC Phase 3+ share per county per analysis; monthly county risk index (rainfall, vegetation and price percentiles against each county's own history) and its alignment to each IPC analysis. | [`dbt/models/marts/`](dbt/models/marts/) |
 | Modelling | Rolling-origin backtest of six forecasting approaches with bootstrap confidence intervals. | [`modelling/backtest_maize.py`](modelling/backtest_maize.py) |
 
 ## What the data required
@@ -107,9 +107,9 @@ Raw data is not included in this repository. The FEWS NET/FPMA data is licensed 
 
 ## Status
 
-**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, forecasting backtest with climate features.
+**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features.
 
-**Next:** the county risk index, validated against IPC; staging for WFP prices; automatic downloads for the HDX sources; a scheduled monthly refresh with GitHub Actions; an API and a small dashboard.
+**Next:** validating the risk index against IPC (plan fixed in DL-022); staging for WFP prices; automatic downloads for the HDX sources; a scheduled monthly refresh with GitHub Actions; an API and a small dashboard.
 
 ## Documentation
 
