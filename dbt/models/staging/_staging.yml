@@ -58,3 +58,32 @@ models:
                 field: county_pcode
       - name: dekad_start
         data_tests: [not_null]
+
+  - name: stg_ipc__area_phase
+    description: >
+      IPC acute food insecurity per analysis, area, validity period and phase,
+      latest version of each value (DL-018). Keeps projections and excluded
+      areas; fct_ipc_county_analysis applies the filters.
+    columns:
+      - name: county_pcode
+        description: Official county code via county_alias. NULL means an unmapped IPC area name.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_county')
+                field: county_pcode
+      - name: analysis_month
+        data_tests: [not_null]
+      - name: validity_period
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["current", "first projection", "second projection"]
+      - name: phase
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["1", "2", "3", "4", "5", "3+", "all"]
+      - name: is_subcounty_area
+        description: True for areas IPC split below county level (Marsabit, Turkana in 2024-07).
