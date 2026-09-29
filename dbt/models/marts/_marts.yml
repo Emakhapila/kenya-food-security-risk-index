@@ -31,3 +31,28 @@ models:
           - accepted_values:
               arguments:
                 values: ["adm1", "adm2_proxy"]
+
+  - name: fct_ipc_county_analysis
+    description: >
+      Validation target for the risk index: share of population in IPC Phase 3+
+      per county per analysis, current period only, refugee areas excluded
+      (DL-018). Sub-county areas are summed unless a county-level row exists.
+      Partial-county areas are flagged by comparing IPC's population with the
+      2019 census.
+    columns:
+      - name: county_pcode
+        data_tests: [not_null]
+      - name: analysis_month
+        data_tests: [not_null]
+      - name: share_phase3plus
+        description: Phase 3+ population / total analysed population, from numbers not rounded percentages.
+        data_tests: [not_null]
+      - name: ipc_area_level
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["county", "subcounty_sum"]
+      - name: ipc_coverage_ratio
+        description: IPC analysed population / 2019 census population.
+      - name: is_partial_county
+        description: True when ipc_coverage_ratio < var('ipc_partial_coverage_max'); validate separately.
