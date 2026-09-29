@@ -51,7 +51,7 @@ flowchart LR
 | Reference | Official 47 counties with 2019 census population, and a table mapping every source's county spelling to an official code. The build fails if a source name is unmapped. | [`scripts/build_reference.py`](scripts/build_reference.py), [`dbt/seeds/`](dbt/seeds/) |
 | Staging | Types every column, keeps the latest version of each value, maps counties to official codes. | [`dbt/models/staging/`](dbt/models/staging/) |
 | Marts | Monthly maize price per county (every month present, gaps explicit, flat runs flagged); monthly rainfall and vegetation per county with anomalies; IPC Phase 3+ share per county per analysis; monthly county risk index (rainfall, vegetation and price percentiles against each county's own history) and its alignment to each IPC analysis. | [`dbt/models/marts/`](dbt/models/marts/) |
-| Modelling | Rolling-origin backtest of six forecasting approaches with bootstrap confidence intervals. | [`modelling/backtest_maize.py`](modelling/backtest_maize.py) |
+| Modelling | Rolling-origin backtest of six forecasting approaches with bootstrap confidence intervals; validation of the risk index against IPC, as pre-registered in DL-022. | [`modelling/`](modelling/) |
 
 ## What the data required
 
@@ -88,6 +88,8 @@ python scripts/build_reference.py            # county reference tables
 python -m ingest.run                         # load raw sources (files in data/raw_manual/)
 python scripts/run_dbt.py build              # staging, marts and tests
 python -m modelling.backtest_maize --test-months 60
+python -m modelling.validate_index          # risk index vs IPC (DL-022)
+python -m pytest tests/
 ```
 
 `scripts/run_dbt.py` reads the connection from `DATABASE_URL`, so the credentials live in one place.
