@@ -373,6 +373,8 @@ The WFP subnational NDVI file covers exactly the same 81 units (confirmed by PCO
 
 **Consequences.** About 270 county-analysis points. A continuous target supports correlation and rank-based validation rather than matching coarse phase categories (refines DL-001).
 
+**Implemented (2026-09-29).** `stg_ipc__area_phase` (all rows, typed, county-mapped) and `fct_ipc_county_analysis` (one row per county per analysis). Partial-county threshold: `ipc_coverage_ratio` below 0.9 (dbt var `ipc_partial_coverage_max`), which sits in the gap between the partial areas (0.06–0.72) and whole counties (1.06–1.22). The published 3+ figure is used, falling back to Phases 3–5 if missing; a warn-level test checks the two agree. A test fails the build if two county-level areas map to the same county in one analysis, since their populations would otherwise be summed.
+
 ---
 
 ## DL-019 — Raw layer deduplicated by row hash
