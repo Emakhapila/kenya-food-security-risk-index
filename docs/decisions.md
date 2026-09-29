@@ -16,7 +16,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-004 | Layered warehouse (raw → staging → marts) with dbt | Accepted | 2026-09-23 |
 | DL-005 | Append-only raw layer with load IDs and source hashes | Accepted | 2026-09-23 |
 | DL-006 | Canonical county dimension built before any joins | Accepted | 2026-09-23 |
-| DL-007 | Anomaly baselines computed from training-window data only | Accepted (method open) | 2026-09-23 |
+| DL-007 | Anomaly baselines computed from training-window data only | Accepted (method resolved by DL-022) | 2026-09-23 |
 | DL-008 | Exogenous rainfall input for forecasts | Open | 2026-09-23 |
 | DL-009 | v1 forecast scope: maize, high-coverage markets only | Accepted (threshold open) | 2026-09-23 |
 | DL-010 | Rolling-origin backtest against a seasonal-naive baseline | Accepted | 2026-09-23 |
@@ -27,10 +27,11 @@ This log records the significant design decisions in this project: what was deci
 | DL-015 | Market type classification; index uses town markets only | Accepted | 2026-09-23 |
 | DL-016 | FEWS NET retail maize (via FAO FPMA) as primary price source | Accepted | 2026-09-24 |
 | DL-017 | County rainfall and NDVI estimated from available units (pixel-weighted) | Accepted | 2026-09-24 |
-| DL-018 | IPC validation target: share of population in Phase 3+ (current period) | Accepted (time alignment open) | 2026-09-25 |
+| DL-018 | IPC validation target: share of population in Phase 3+ (current period) | Accepted (time alignment resolved by DL-022) | 2026-09-25 |
 | DL-019 | Raw layer deduplicated by row hash | Accepted | 2026-09-25 |
 | DL-020 | Price forecast v1: baselines not beaten; next test climate features | Accepted | 2026-09-28 |
 | DL-021 | Climate features: help at 2–3 months, not yet significant | Accepted | 2026-09-28 |
+| DL-022 | Risk index design and pre-registered validation plan | Accepted | 2026-09-29 |
 
 ---
 
@@ -164,6 +165,8 @@ Transformations run in dbt, with schema tests on keys, accepted values and plaus
 **Open:** choose the baseline method by **end of Day 7**: an expanding window or a fixed reference period (e.g. 2010–2019 climatology for rainfall), and the method for the price seasonal norm.
 
 **Consequences.** Early periods have less stable baselines. The evaluation start date may need to move later.
+
+Resolved by DL-022: the index ranks each value against all earlier values for the same county (an expanding window), never against later ones.
 
 ---
 
@@ -369,7 +372,7 @@ The WFP subnational NDVI file covers exactly the same 81 units (confirmed by PCO
 - Area name variants (case, "Taita", "Tharaka", "Lamu county", "Homabay") are resolved through the county alias table.
 - Partial-county IPC areas: comparing IPC's total population with the 2019 census showed seven areas cover only part of their county (Kiambu 0.06, Nyeri 0.27, Machakos 0.39, Tharaka 0.45, Embu 0.46, Meru 0.51, Tharaka Nithi 0.72); all others are 1.06–1.22. Staging computes `ipc_coverage_ratio` per county per analysis, and validation reports whole-county and partial-county areas separately.
 
-**Open:** how to align index months with an analysis. Options: the index in the analysis month; the mean over the preceding 3 months; or the mean over the validity window (`From`–`To`). To be decided at the validation stage and recorded here.
+**Resolved by DL-022** (primary: mean over the 3 months before the analysis month). Original open question: how to align index months with an analysis. Options: the index in the analysis month; the mean over the preceding 3 months; or the mean over the validity window (`From`–`To`). To be decided at the validation stage and recorded here.
 
 **Consequences.** About 270 county-analysis points. A continuous target supports correlation and rank-based validation rather than matching coarse phase categories (refines DL-001).
 
@@ -443,6 +446,56 @@ The WFP subnational NDVI file covers exactly the same 81 units (confirmed by PCO
 
 ---
 
+## DL-022 — Risk index design and pre-registered validation plan
+
+**Date:** 2026-09-29 · **Status:** Accepted (resolves DL-007 method and DL-018 time alignment)
+
+**Context.** DL-001 calls for a monthly county risk index built from rainfall, vegetation and price signals, validated against IPC rather than trained on it. The IPC target now exists (`fct_ipc_county_analysis`, DL-018): 281 county-analyses, about 23 counties, 12 analyses from 2021-02 to 2026-07. The design and the validation test are fixed here, before any results are seen, so that choices cannot be tuned to the outcome.
+
+The index measures **shocks**: how unusual conditions are for a county compared with its own history. It does not measure chronic food insecurity. Turkana has a high Phase 3+ share in most years, which no anomaly can explain; what an anomaly can explain is when a county becomes worse than usual.
+
+**Decision: components.** Each component is a percentile of the current value against that county's own earlier values only (DL-007: expanding window, never later data), using mid-ranks for ties, then oriented so that 1 = high risk.
+
+| Component | Measure | Compared against | Minimum history | Risk |
+|---|---|---|---|---|
+| Rainfall | 3-month total (month and 2 before) | Same calendar window in every earlier year, from 1981 | 10 years | 1 − percentile |
+| Vegetation | Monthly NDVI | Same calendar month in every earlier year, from 2002 | 10 years | 1 − percentile |
+| Price (16 FEWS NET counties) | log price − mean log price of the same month in the 3 previous years | All earlier months of this measure | 36 months | percentile |
+
+Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % anomalies are lopsided. A drought can fall no lower than 0% of normal, but wet months reach 3–4 times normal (Turkana's monthly maximum is 178–385%), so equal distances above and below normal are not equal shocks. Percentiles are bounded, symmetric and put all three components on one scale without assuming a distribution. The price measure compares with the same month in earlier years to remove seasonality; inflation still raises the measure, but ranking it against the county's own history absorbs a steady inflation offset. Three years rather than FEWS NET's usual five limits the inflation built into the baseline.
+
+**Decision: index.** The mean of the available component risks, with equal weights (not fitted to IPC, per DL-001). Rainfall is required. Three variants:
+
+1. **Rainfall only**: the comparison baseline (DL-010).
+2. **Rainfall + vegetation**: all 47 counties. **Primary variant.**
+3. **Rainfall + vegetation + price**: the 16 FEWS NET counties.
+
+**Decision: time alignment (resolves DL-018).** For an analysis dated month *t*, the index value is the mean over months *t*−3 to *t*−1 (e.g. April–June for a July analysis), with at least 2 of the 3 months present. Everything in that window was available before IPC published, so this is an honest early-warning test.
+
+**Validation plan (fixed before results).**
+
+- **Sample:** whole-county IPC rows (`is_partial_county = false`), counties with at least 4 analyses.
+- **Primary metric:** Spearman correlation between the index and `share_phase3plus` after subtracting each county's own mean from both (within-county). This asks whether the index rises when a county's situation worsens, and removes chronic differences between counties that would flatter any index.
+- **Primary claim:** variant 2 is supported if the primary correlation is positive and its 95% interval excludes zero.
+- **Comparisons:** variant 2 − variant 1 (does vegetation add to rainfall?), on the same sample; variant 3 − variant 2 on the FEWS NET counties only (does price add?). A component is said to add information only if the interval of the difference excludes zero.
+- **Intervals:** bootstrap resampling whole IPC analyses (not rows, since counties in one analysis share conditions), 2,000 resamples, percentile 95% intervals. With only 12 analyses the intervals are wide; this is stated with the results.
+- **Reported separately, not used for the primary claim:** the correlation without removing county means (cross-county context); partial-county rows; adm1 vs adm2-proxy climate counties (DL-017's revisit trigger).
+- **Sensitivity only:** alignment to the analysis month alone, and to the mean over the validity window (`valid_from` to `valid_to`). The validity window includes months after publication, so it tests whether index and IPC describe the same period, not early warning.
+
+**Alternatives considered.**
+
+- Fitting weights to IPC: rejected under DL-001 (too few labels; the index would be trained on its own test).
+- % anomalies with caps: rejected; caps are arbitrary and do not fix the asymmetry.
+- Z-scores: rejected; they assume roughly symmetric distributions that rainfall and prices do not have.
+- Cross-county ranking as the primary test: rejected because an anomaly index is not designed to explain chronic differences between counties.
+- A long-memory rainfall component (e.g. 12 months): not in v1. IPC responds to consecutive failed seasons (2020–2023), which a 3-month window only partly captures. It is the first thing to add if validation is weak, and would be recorded as a new decision rather than a change to this one.
+
+**Consequences.** The index can be computed for all 47 counties but validated only where IPC reports (DL-001). The validation has little statistical power with 12 analyses; a null result is possible and will be reported as found.
+
+**Revisit if.** The primary claim fails; or proxy-climate counties validate clearly worse than adm1 counties (DL-017).
+
+---
+
 ## Known limitations (running list)
 
 Add a line here whenever a limitation is discovered. This list feeds the README's limitations section.
@@ -452,6 +505,7 @@ Add a line here whenever a limitation is discovered. This list feeds the README'
 - Climate aggregation method and boundaries are set by the publisher (DL-002).
 - No live monthly price forecast from WFP data; recent town-market prices are sparse (DL-014)
 - County rainfall for 39 counties is estimated from a sample of 1–4 sub-counties (DL-017).
+- The risk index measures shocks relative to each county's own history, not chronic food insecurity (DL-022).
 - Three FEWS NET price counties (Embu, Meru, Tharaka-Nithi) have partial-county IPC areas in every analysis, so only 13 of the 16 can be validated as whole counties (DL-018).
 
 ---
