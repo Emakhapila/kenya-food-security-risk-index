@@ -113,6 +113,7 @@ python -m ingest.run --download              # download HDX sources, then load a
 python scripts/run_dbt.py build              # staging, marts and tests
 python -m modelling.backtest_maize --test-months 60
 python -m modelling.validate_index          # risk index vs IPC (DL-022)
+streamlit run dashboard/app.py               # dashboard at http://localhost:8501
 python -m pytest tests/
 ```
 

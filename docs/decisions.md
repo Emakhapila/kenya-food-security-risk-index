@@ -244,6 +244,8 @@ Refined by DL-014: forecast scope is now wholesale maize in five main markets.
 
 **Consequences.** Less visual polish than Power BI. The dashboard is a window into the marts, not the product.
 
+**Implemented (2026-10-01, risk view).** `dashboard/app.py` (Streamlit), with data access in `dashboard/data.py` and Altair charts in `dashboard/charts.py`, both tested without a server. The risk view shows the latest month in which at least 90% of counties have a value (the newest month is still being published), as diverging bars around "usual" (0.5): drier/browner than usual in orange, wetter/greener in blue, rather than a plain risk ranking, since wetter than usual is not automatically safe (floods). Selecting a county shows its monthly index and its IPC Phase 3+ share on one timeline, as two panels, never two y-axes. Counties without whole-county IPC assessments are labelled as not validated. Streamlit Community Cloud installs the slim `dashboard/requirements.txt`; the database connection comes from `DATABASE_URL` in Streamlit secrets, using a read-only role. The forecast view follows.
+
 ---
 
 ## DL-013 — AWS as documented target architecture, not deployed in v1
