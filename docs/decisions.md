@@ -536,7 +536,7 @@ Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % ano
 **Decision.**
 
 - Publish variant 2 (rain + NDVI) as the county risk index for all 47 counties, with the validation scope stated.
-- Keep price out of the published index for now; `risk_index` in the mart still includes it where available, so change `risk_index` to rain + NDVI before the dashboard is built.
+- Keep price out of the published index: `risk_index` is rain + NDVI (rain alone before mid-2012, when NDVI history is too short). Price stays in the mart (`risk_price`, `index_v3_climate_price`) for analysis. Done 2026-10-01.
 - The 12-month rainfall component named in DL-022 is not needed to rescue the primary claim. It stays a possible v2 improvement, tested as a new decision.
 
 **Revisit if.** More IPC analyses are published (re-run the same script; the test does not change), or the dashboard needs an index for counties outside the validated set.
