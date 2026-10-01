@@ -578,6 +578,7 @@ Add a line here whenever a limitation is discovered. This list feeds the README'
 - No live monthly price forecast from WFP data; recent town-market prices are sparse (DL-014)
 - County rainfall for 39 counties is estimated from a sample of 1–4 sub-counties (DL-017).
 - The risk index measures shocks relative to each county's own history, not chronic food insecurity (DL-022).
+- The risk index measures drought, not flood risk. Rainfall enters in one direction (less rain = more risk), so an unusually wet season reads as low risk even when flooding damages crops, livestock and market access; Marsabit's index sits near zero through the very wet late-2023 El Niño short rains. It also uses only observed rainfall, never forecasts (DL-008, DL-022). Planned extensions, each to be validated separately before use: an excess-rainfall (flood) signal kept apart from the drought index, and a projected index driven by seasonal forecasts (e.g. ICPAC, Kenya Meteorological Department), shown alongside the observed index as IPC shows current and projected phases.
 - The raw layer cannot tell a row dropped from a source from an unchanged one (DL-019). If a full-history source such as IPC renames an area, the old spelling stays in staging; `assert_ipc_one_county_area_per_analysis` fails the build rather than double-counting.
 - Three FEWS NET price counties (Embu, Meru, Tharaka-Nithi) have partial-county IPC areas in every analysis, so only 13 of the 16 can be validated as whole counties (DL-018).
 
