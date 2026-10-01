@@ -58,7 +58,7 @@ with left:
     names = snap.sort_values("county_name")["county_name"].tolist()
     default = names.index("Marsabit") if "Marsabit" in names else 0
     county_name = st.selectbox("Choose a county", names, index=default)
-    st.altair_chart(charts.county_bars(snap, selected=county_name), use_container_width=True)
+    st.altair_chart(charts.county_bars(snap, selected=county_name), width="stretch")
 
 with right:
     pcode = snap.loc[snap["county_name"] == county_name, "county_pcode"].iloc[0]
@@ -69,9 +69,9 @@ with right:
         f"{row['direction'].lower()} (0.5 = usual for {county_name})."
     )
     top, bottom = charts.county_history(index, ipc, pcode)
-    st.altair_chart(top, use_container_width=True)
+    st.altair_chart(top, width="stretch")
     if bottom is not None:
-        st.altair_chart(bottom, use_container_width=True)
+        st.altair_chart(bottom, width="stretch")
     if pcode not in validated:
         partial = bottom is not None
         st.info(
