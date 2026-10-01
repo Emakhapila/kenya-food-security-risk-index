@@ -68,7 +68,7 @@ flowchart LR
 
 | Layer | What it does | Where |
 |---|---|---|
-| Ingestion | Loads each source file; skips unchanged files; stores each distinct row once, so revised values arrive as new rows and nothing is overwritten. Every run is logged. | [`ingest/`](ingest/) |
+| Ingestion | Downloads the HDX sources through HDX's API (FPMA is a manual export); loads each file; skips unchanged files; stores each distinct row once, so revised values arrive as new rows and nothing is overwritten. Every run is logged. | [`ingest/`](ingest/) |
 | Reference | Official 47 counties with 2019 census population, and a table mapping every source's county spelling to an official code. The build fails if a source name is unmapped. | [`scripts/build_reference.py`](scripts/build_reference.py), [`dbt/seeds/`](dbt/seeds/) |
 | Staging | Types every column, keeps the latest version of each value, maps counties to official codes. | [`dbt/models/staging/`](dbt/models/staging/) |
 | Marts | Monthly maize price per county (every month present, gaps explicit, flat runs flagged); monthly rainfall and vegetation per county with anomalies; IPC Phase 3+ share per county per analysis; monthly county risk index (rainfall and vegetation percentiles against each county's own history; price kept for analysis) and its alignment to each IPC analysis. | [`dbt/models/marts/`](dbt/models/marts/) |
@@ -106,7 +106,8 @@ python -m pip install -r requirements.txt
 # DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
 
 python scripts/build_reference.py            # county reference tables
-python -m ingest.run                         # load raw sources (files in data/raw_manual/)
+python -m ingest.run --download              # download HDX sources, then load all raw sources
+                                             # (FPMA: put the manual export in data/raw_manual/)
 python scripts/run_dbt.py build              # staging, marts and tests
 python -m modelling.backtest_maize --test-months 60
 python -m modelling.validate_index          # risk index vs IPC (DL-022)
@@ -132,7 +133,7 @@ Raw data is not included in this repository. The FEWS NET/FPMA data is licensed 
 
 **Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC.
 
-**Next:** staging for WFP prices; automatic downloads for the HDX sources; a scheduled monthly refresh with GitHub Actions; an API and a small dashboard.
+**Next:** staging for WFP prices; a scheduled monthly refresh with GitHub Actions; an API and a small dashboard.
 
 ## Documentation
 

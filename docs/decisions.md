@@ -33,6 +33,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-021 | Climate features: help at 2–3 months, not yet significant | Accepted | 2026-09-28 |
 | DL-022 | Risk index design and pre-registered validation plan | Accepted | 2026-09-29 |
 | DL-023 | Risk index validation: tracks IPC within counties | Accepted | 2026-09-29 |
+| DL-024 | HDX sources downloaded through the CKAN API | Accepted | 2026-10-01 |
 
 ---
 
@@ -540,6 +541,28 @@ Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % ano
 - The 12-month rainfall component named in DL-022 is not needed to rescue the primary claim. It stays a possible v2 improvement, tested as a new decision.
 
 **Revisit if.** More IPC analyses are published (re-run the same script; the test does not change), or the dashboard needs an index for counties outside the validated set.
+
+---
+
+## DL-024 — HDX sources downloaded through the CKAN API
+
+**Date:** 2026-10-01 · **Status:** Accepted
+
+**Context.** The four HDX sources (WFP prices, rainfall, NDVI, IPC) were downloaded by hand into `data/raw_manual/`. A monthly scheduled refresh (DL-011) needs them fetched automatically. HDX download links include resource IDs that can change when a dataset is republished.
+
+**Decision.**
+
+- `ingest/download.py` asks HDX's CKAN API (`package_show`) for each dataset's current file list and downloads the file matching the configured name into `data/raw/`. `python -m ingest.run --download` downloads, then loads.
+- A file is matched by its resource name or the file name in its URL. If no file or more than one file matches, the run fails and prints the dataset's file names, so a renamed file is a one-line fix in `ingest/sources.py`.
+- Downloads go to a temporary `.part` file, renamed only when complete and non-empty, so ingestion never loads a partial file.
+- Every run downloads every file; unchanged files are skipped at ingestion by SHA-256 (DL-019), which keeps one rule for "has this changed?".
+- FPMA stays a manual export in `data/raw_manual/` (DL-016: no API).
+
+**Alternatives considered.** Hard-coded download URLs: rejected, because they break silently when HDX republishes. The `hdx-python-api` library: rejected as a heavy dependency for one API call.
+
+**Consequences.** The pipeline depends on HDX's API being available; a failed download stops the run before anything is loaded. Downloaded files are derived from licensed data and stay out of git (`data/` is ignored).
+
+**Revisit if.** HDX changes its API, or a source moves off HDX.
 
 ---
 
