@@ -2,6 +2,8 @@
 
 Usage (from the repo root):
     python -m ingest.run                      # all sources
+    python -m ingest.run --download           # download HDX sources first
+    python -m ingest.run --download --hdx-only  # scheduled runs: FPMA is loaded by hand
     python -m ingest.run --source rainfall    # one source
 """
 from __future__ import annotations
@@ -19,8 +21,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", choices=names, action="append",
                         help="load only this source (can be repeated)")
+    parser.add_argument("--download", action="store_true",
+                        help="download the HDX sources before loading (FPMA stays manual)")
+    parser.add_argument("--hdx-only", action="store_true",
+                        help="skip manual sources (FPMA), e.g. in scheduled runs")
     args = parser.parse_args(argv)
     selected = [s for s in SOURCES if not args.source or s.name in args.source]
+    if args.hdx_only:
+        selected = [s for s in selected if s.hdx_dataset]
+
+    if args.download:
+        from .download import main as download_main
+        hdx = [s.name for s in selected if s.hdx_dataset]
+        if hdx and download_main([a for n in hdx for a in ("--source", n)]) != 0:
+            print("Download failed; nothing loaded.")
+            return 1
 
     failures = 0
     with connect() as conn:

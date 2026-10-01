@@ -1,0 +1,72 @@
+# Monthly refresh of the warehouse on Neon (DL-011, DL-024).
+#
+# Downloads the HDX sources, loads them, rebuilds and tests every dbt model,
+# and re-runs the pre-registered index validation (DL-022). FPMA has no API, so
+# it is exported and loaded by hand (DL-016); this run reuses the last FPMA load.
+#
+# Nothing is committed back to the repo: results are attached to the run as an
+# artifact, so the commit history stays the author's own.
+#
+# Needs one repository secret: DATABASE_URL (the Neon connection string).
+name: Monthly refresh
+
+on:
+  schedule:
+    - cron: "17 6 8 * *"     # 06:17 UTC on the 8th: early-month rainfall and NDVI are out
+  workflow_dispatch:          # "Run workflow" button on the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monthly-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash          # bash -eo pipefail: a failing command fails the step, even in a pipe
+    timeout-minutes: 45
+    env:
+      DO_NOT_TRACK: "1"
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check the database secret is set
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Add the DATABASE_URL repository secret (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      - name: Download and load HDX sources
+        run: python -m ingest.run --download --hdx-only
+
+      - name: Build and test the warehouse
+        run: python scripts/run_dbt.py build
+
+      - name: Validate the risk index against IPC
+        run: python -m modelling.validate_index | tee validation.txt
+
+      - name: Attach results to the run
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: refresh-results-${{ github.run_number }}
+          path: |
+            validation.txt
+            reports/index_validation/
+            dbt/target/run_results.json
+          if-no-files-found: warn
+          retention-days: 90

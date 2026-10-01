@@ -1,0 +1,41 @@
+# Checks on every pull request and push to main (DL-011).
+# Runs the unit tests and parses the dbt project. Nothing here touches the
+# database: the raw data is licensed and not in the repo, so a full dbt build
+# runs in the monthly refresh against Neon instead.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash          # bash -eo pipefail: a failing command fails the step, even in a pipe
+    timeout-minutes: 20
+    env:
+      DO_NOT_TRACK: "1"
+      # dbt parse needs connection settings but never connects
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: python -m pytest tests/ -q
+
+      - name: Parse dbt project (refs, sources, macros, YAML)
+        run: python scripts/run_dbt.py parse

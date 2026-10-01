@@ -1,7 +1,7 @@
 """Source definitions: where each raw file comes from and how to read it.
 
-For now every source is read from data/raw_manual/. Automatic downloads
-for the HDX sources are added later; FPMA stays a manual export (DL-016).
+HDX sources are downloaded into data/raw/ by ingest.download. FPMA has no
+API and stays a manual monthly export in data/raw_manual/ (DL-016).
 """
 from __future__ import annotations
 
@@ -12,7 +12,8 @@ from typing import Callable
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-RAW_MANUAL = ROOT / "data" / "raw_manual"
+RAW_MANUAL = ROOT / "data" / "raw_manual"      # manual exports (FPMA)
+RAW_DOWNLOAD = ROOT / "data" / "raw"           # written by ingest.download
 
 
 def read_csv_as_text(path: Path) -> pd.DataFrame:
@@ -41,27 +42,36 @@ def read_fpma(path: Path) -> pd.DataFrame:
 @dataclass
 class Source:
     name: str                 # also the raw table name: raw.<name>
-    pattern: str              # file name or glob in data/raw_manual/
+    pattern: str              # file name (HDX) or glob (manual exports)
     url: str                  # where the data comes from (provenance)
     reader: Callable[[Path], pd.DataFrame] = read_csv_as_text
+    hdx_dataset: str | None = None   # HDX dataset id; None = manual export
+
+    @property
+    def folder(self) -> Path:
+        return RAW_DOWNLOAD if self.hdx_dataset else RAW_MANUAL
 
     def latest_file(self) -> Path:
-        matches = sorted(RAW_MANUAL.glob(self.pattern))
+        matches = sorted(self.folder.glob(self.pattern))
         if not matches:
-            raise FileNotFoundError(f"{self.name}: no file matching {self.pattern} in {RAW_MANUAL}")
+            hint = " (run: python -m ingest.download)" if self.hdx_dataset else ""
+            raise FileNotFoundError(f"{self.name}: no file matching {self.pattern} in {self.folder}{hint}")
         return matches[-1]    # names with ISO dates sort chronologically
 
 
-# Check each URL against the HDX page in your browser and correct if needed.
+def _hdx(dataset: str) -> str:
+    return f"https://data.humdata.org/dataset/{dataset}"
+
+
 SOURCES = [
-    Source("wfp_prices", "wfp_food_prices_ken.csv",
-           "https://data.humdata.org/dataset/wfp-food-prices-for-kenya"),
-    Source("rainfall", "ken-rainfall-subnat-full.csv",
-           "https://data.humdata.org/dataset/ken-rainfall-subnational"),
-    Source("ndvi", "ken-ndvi-subnat-full.csv",
-           "https://data.humdata.org/dataset/ken-ndvi-subnational"),
-    Source("ipc", "ipc_ken_area_long.csv",
-           "https://data.humdata.org/dataset/kenya-acute-food-insecurity-country-data"),
+    Source("wfp_prices", "wfp_food_prices_ken.csv", _hdx("wfp-food-prices-for-kenya"),
+           hdx_dataset="wfp-food-prices-for-kenya"),
+    Source("rainfall", "ken-rainfall-subnat-full.csv", _hdx("ken-rainfall-subnational"),
+           hdx_dataset="ken-rainfall-subnational"),
+    Source("ndvi", "ken-ndvi-subnat-full.csv", _hdx("ken-ndvi-subnational"),
+           hdx_dataset="ken-ndvi-subnational"),
+    Source("ipc", "ipc_ken_area_long.csv", _hdx("kenya-acute-food-insecurity-country-data"),
+           hdx_dataset="kenya-acute-food-insecurity-country-data"),
     Source("fpma", "fpma_ken_maize_white_retail_*.csv",
            "https://fpma.fao.org/giews/fpmat4/#/dashboard/tool/domestic", read_fpma),
 ]
