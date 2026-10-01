@@ -62,8 +62,9 @@ models:
       Monthly county risk index (DL-022): how unusual rainfall, vegetation and
       maize prices are compared with the county's own earlier history, as
       percentiles oriented so 1 = high risk. Measures shocks, not chronic food
-      insecurity. Variant columns require all their components; risk_index is
-      the mean of available components with rainfall required.
+      insecurity. Variant columns require all their components. risk_index is
+      the published value: rainfall + vegetation (DL-023), rainfall alone before
+      NDVI has 10 years of history; price is kept for analysis only.
     columns:
       - name: county_pcode
         data_tests: [not_null]
@@ -82,7 +83,7 @@ models:
         data_tests:
           - accepted_values:
               arguments:
-                values: ["rain", "rain+ndvi", "rain+price", "rain+ndvi+price"]
+                values: ["rain", "rain+ndvi"]
 
   - name: fct_risk_index_ipc
     description: >

@@ -9,8 +9,10 @@
 --              3 previous years (at least 2 present), vs all earlier months (pct)
 --
 -- Variant columns require all of their components, so the validation compares
--- variants on identical county-months. risk_index is the published value: the
--- mean of whichever components exist, with rainfall required.
+-- variants on identical county-months. risk_index is the published value
+-- (DL-023): rainfall + vegetation, the validated variant. Price is kept as a
+-- column for analysis but is not published, since it added nothing in validation.
+-- Before NDVI has 10 years of history (to mid-2012) risk_index is rainfall only.
 
 {% set min_years = var('index_min_history_years') %}
 {% set min_price_months = var('index_min_price_history_months') %}
@@ -100,15 +102,9 @@ select
     round(c.risk_rain, 4)                                             as index_v1_rain,
     round((c.risk_rain + c.risk_ndvi) / 2, 4)                         as index_v2_climate,
     round((c.risk_rain + c.risk_ndvi + c.risk_price) / 3, 4)          as index_v3_climate_price,
-    -- published index: mean of available components, rainfall required
-    case when c.risk_rain is not null then round(
-        (c.risk_rain + coalesce(c.risk_ndvi, 0) + coalesce(c.risk_price, 0))
-        / (1 + (c.risk_ndvi is not null)::int + (c.risk_price is not null)::int), 4)
-    end                                                               as risk_index,
-    concat_ws('+',
-        case when c.risk_rain  is not null then 'rain'  end,
-        case when c.risk_ndvi  is not null then 'ndvi'  end,
-        case when c.risk_price is not null then 'price' end)          as index_components,
+    -- published index (DL-023): rainfall + vegetation; rainfall alone until NDVI history exists
+    round(coalesce((c.risk_rain + c.risk_ndvi) / 2, c.risk_rain), 4)  as risk_index,
+    case when c.risk_ndvi is not null then 'rain+ndvi' else 'rain' end as index_components,
     c.rain_history_years,
     c.ndvi_history_years,
     c.price_history_months
