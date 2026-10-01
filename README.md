@@ -1,5 +1,7 @@
 # Kenya Food Security Risk Index
 
+[![CI](https://github.com/Emakhapila/kenya-food-security-risk-index/actions/workflows/ci.yml/badge.svg)](https://github.com/Emakhapila/kenya-food-security-risk-index/actions/workflows/ci.yml)
+
 An end-to-end data pipeline that brings together maize prices, rainfall, vegetation and official food security assessments for Kenya's counties. It builds a monthly county risk index, validated against the official IPC assessments, and tests whether climate signals improve short-term maize price forecasts.
 
 Food crises in Kenya's arid and semi-arid counties build up over months, but the official IPC assessments are published about twice a year. The signals in between (prices, rainfall, pasture) are spread across sources with different formats, geographies and schedules. This project reconciles them into one tested, county-level warehouse that refreshes monthly.
@@ -116,6 +118,8 @@ python -m pytest tests/
 
 `scripts/run_dbt.py` reads the connection from `DATABASE_URL`, so the credentials live in one place.
 
+**Automation** ([`.github/workflows/`](.github/workflows/)): every pull request runs the tests and parses the dbt project. On the 8th of each month a scheduled run downloads the HDX sources, rebuilds the warehouse on Neon and re-runs the index validation, attaching the results to the run. It needs one repository secret, `DATABASE_URL`. FEWS NET/FPMA prices have no API and are exported and loaded by hand each month.
+
 ## Data sources and licences
 
 | Source | Provider | Licence |
@@ -131,9 +135,9 @@ Raw data is not included in this repository. The FEWS NET/FPMA data is licensed 
 
 ## Status
 
-**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC.
+**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC, automatic HDX downloads, CI and a scheduled monthly refresh.
 
-**Next:** staging for WFP prices; a scheduled monthly refresh with GitHub Actions; an API and a small dashboard.
+**Next:** a small public dashboard (Streamlit); staging for WFP prices; an API.
 
 ## Documentation
 

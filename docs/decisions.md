@@ -228,6 +228,8 @@ Refined by DL-014: forecast scope is now wholesale maize in five main markets.
 
 **Revisit if.** The pipeline gains branching dependencies, multiple schedules, or needs backfill tooling.
 
+**Implemented (2026-10-01).** `.github/workflows/ci.yml` runs `pytest` and `dbt parse` on every pull request and push to `main`; it never connects to a database, because the raw data is licensed and not in the repo. `.github/workflows/monthly-refresh.yml` runs at 06:17 UTC on the 8th of each month (and on demand): download and load the HDX sources (DL-024), `dbt build` on Neon, and the DL-022 validation. FPMA is loaded by hand (DL-016), so the scheduled run reuses the last FPMA load. Results are attached to the run as an artifact (kept 90 days) rather than committed, so the repo's history contains only the author's commits. The one secret is `DATABASE_URL`. A validation that does not support the index does not fail the run; only errors do.
+
 ---
 
 ## DL-012 — Streamlit for the public dashboard, not Power BI
