@@ -71,6 +71,7 @@ lightgbm==4.7.0
 MarkupSafe==3.0.3
 mashumaro==3.17
 matplotlib-inline==0.2.2
+matplotlib==3.10.9
 metricflow==0.213.0
 mistune==3.3.4
 more-itertools==10.8.0

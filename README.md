@@ -16,6 +16,10 @@ A monthly index ranks each county's recent rainfall, vegetation and maize prices
 | **Rainfall + vegetation (primary)** | **0.52** | **0.20 to 0.72** |
 | Rainfall + vegetation + price (13 FEWS NET counties) | 0.60 | 0.26 to 0.75 |
 
+![Marsabit County: monthly risk index and IPC Phase 3+ share](reports/figures/index_vs_ipc_marsabit.png)
+
+*Marsabit is a typical county: its correlation (0.68) is close to the median of the 19 validated counties (0.66). Made with [`modelling/plot_index_example.py`](modelling/plot_index_example.py).*
+
 - **When a county's index rises, its share of people in IPC Phase 3+ tends to rise too.** The index averages the 3 months before each assessment, so it uses only information available before IPC published.
 - **Vegetation adds to rainfall** (+0.11), but the interval (−0.003 to +0.21) just includes zero: consistent evidence, not proof.
 - **Price adds nothing** once rainfall and vegetation are in (−0.02). The price variant scores higher only because it covers different counties.
