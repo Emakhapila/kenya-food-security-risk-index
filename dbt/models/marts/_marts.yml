@@ -95,3 +95,23 @@ models:
         data_tests: [not_null]
       - name: analysis_month
         data_tests: [not_null]
+
+  - name: fct_price_forecast
+    description: >
+      Latest published retail maize price forecast (DL-025): naive at 1 month,
+      LightGBM with climate features at 2-3 months (DL-021), with 80% ranges from
+      the models' own recent errors. One row per county and horizon.
+    columns:
+      - name: county_pcode
+        data_tests: [not_null]
+      - name: horizon
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
+                quote: false
+      - name: model
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["naive", "lightgbm_climate"]

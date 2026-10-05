@@ -34,6 +34,7 @@ This log records the significant design decisions in this project: what was deci
 | DL-022 | Risk index design and pre-registered validation plan | Accepted | 2026-09-29 |
 | DL-023 | Risk index validation: tracks IPC within counties | Accepted | 2026-09-29 |
 | DL-024 | HDX sources downloaded through the CKAN API | Accepted | 2026-10-01 |
+| DL-025 | Published maize price forecast: naive at 1 month, LightGBM + climate at 2–3 | Accepted | 2026-10-05 |
 
 ---
 
@@ -569,6 +570,28 @@ Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % ano
 **Consequences.** The pipeline depends on HDX's API being available; a failed download stops the run before anything is loaded. Downloaded files are derived from licensed data and stay out of git (`data/` is ignored).
 
 **Revisit if.** HDX changes its API, or a source moves off HDX.
+
+---
+
+## DL-025 — Published maize price forecast: naive at 1 month, LightGBM + climate at 2–3
+
+**Date:** 2026-10-05 · **Status:** Accepted (implements DL-020 and DL-021)
+
+**Context.** The backtest (DL-020, DL-021) evaluated forecasts but published nothing. The dashboard needs a current forecast that is refreshed monthly and honest about its uncertainty.
+
+**Decision.**
+
+- **Models:** naive (last observed price) at 1 month, since no model beat it; LightGBM with rainfall and vegetation features at 2 and 3 months, the best model there in the 60-origin backtest. `modelling/forecast_maize.py` imports the backtest's own data loading, features and model, so the published forecast is exactly what was evaluated.
+- **Origin:** the latest month in which at least half the counties report a price; a county is forecast only if it has a price that month (as in the backtest).
+- **Uncertainty:** an 80% range from the models' own errors. The published models are re-run as a rolling-origin forecast over the last 36 months, and the 10th and 90th percentiles of log(actual / forecast) per horizon are applied to the new forecast. Garissa (low resolution, DL-016) is forecast and flagged, but left out of the error sample.
+- **Storage:** every run is appended to `forecasts.maize_price_forecast_runs` (created by a dbt `on-run-start` macro, so the warehouse builds before the first forecast exists); nothing is overwritten. `marts.fct_price_forecast` shows the latest run, so the dashboard keeps reading only `marts` and its read-only role needs no new grants.
+- **Schedule:** the monthly refresh runs the forecast after `dbt build`, then rebuilds `fct_price_forecast`.
+
+**Alternatives considered.** Model-based intervals (e.g. SARIMAX prediction intervals): rejected, as SARIMAX is not the published model and LightGBM has no native intervals. Fixed intervals from the original backtest: rejected because they would go stale; recomputing each run keeps them current. Quantile regression: possible later; empirical errors are simpler to explain.
+
+**Consequences.** The ranges describe recent error, not every possible future: a shock unlike the last three years (a new drought, a policy change) can fall outside them. FEWS NET prices are loaded by hand each month (DL-016), so a forecast is only as current as the last export. The 2-3 month gain over naive is consistent but not proven (DL-021); the dashboard says so.
+
+**Revisit if.** A longer backtest shows LightGBM + climate no longer beats naive at 2-3 months, or the 80% ranges cover clearly more or less than 80% of outcomes over a year of live forecasts.
 
 ---
 

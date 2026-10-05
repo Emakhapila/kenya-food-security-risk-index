@@ -1,7 +1,8 @@
 # Monthly refresh of the warehouse on Neon (DL-011, DL-024).
 #
 # Downloads the HDX sources, loads them, rebuilds and tests every dbt model,
-# and re-runs the pre-registered index validation (DL-022). FPMA has no API, so
+# publishes the maize price forecast (DL-025) and re-runs the pre-registered
+# index validation (DL-022). FPMA has no API, so
 # it is exported and loaded by hand (DL-016); this run reuses the last FPMA load.
 #
 # Nothing is committed back to the repo: results are attached to the run as an
@@ -55,6 +56,11 @@ jobs:
 
       - name: Build and test the warehouse
         run: python scripts/run_dbt.py build
+
+      - name: Publish the maize price forecast (DL-025)
+        run: |
+          python -m modelling.forecast_maize
+          python scripts/run_dbt.py build --select fct_price_forecast
 
       - name: Validate the risk index against IPC
         run: python -m modelling.validate_index | tee validation.txt
