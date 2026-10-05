@@ -9,6 +9,7 @@ Run locally (from the repo root):
 from __future__ import annotations
 
 import sys
+import traceback
 from pathlib import Path
 
 import streamlit as st
@@ -29,7 +30,8 @@ def load():
 
 try:
     index, ipc = load()
-except Exception as exc:  # show a readable message instead of a traceback
+except Exception as exc:  # visitors see the error type; the full traceback goes to the app logs
+    traceback.print_exc()
     st.error(f"Could not load data from the database: {type(exc).__name__}")
     st.stop()
 

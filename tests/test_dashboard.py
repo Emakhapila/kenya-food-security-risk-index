@@ -63,3 +63,12 @@ def test_selected_county_name_with_apostrophe_is_escaped():
 def test_no_complete_month_raises():
     with pytest.raises(ValueError):
         data.latest_complete_month(index_frame().assign(risk_index=float("nan")))
+
+
+def test_dashboard_prefers_the_read_only_connection(monkeypatch, tmp_path):
+    monkeypatch.setattr(data, "ROOT", tmp_path)          # no .env file
+    monkeypatch.setenv("DATABASE_URL", "postgresql://owner@h/db")
+    monkeypatch.setenv("DASHBOARD_DATABASE_URL", "postgresql://dashboard_reader@h/db")
+    assert data.database_url() == "postgresql://dashboard_reader@h/db"
+    monkeypatch.delenv("DASHBOARD_DATABASE_URL")
+    assert data.database_url() == "postgresql://owner@h/db"

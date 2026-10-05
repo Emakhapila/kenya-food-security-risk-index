@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/Emakhapila/kenya-food-security-risk-index/actions/workflows/ci.yml/badge.svg)](https://github.com/Emakhapila/kenya-food-security-risk-index/actions/workflows/ci.yml)
 
+**Live dashboard: [kenya-food-security-index.streamlit.app](https://kenya-food-security-index.streamlit.app/)**, updated monthly.
+
 An end-to-end data pipeline that brings together maize prices, rainfall, vegetation and official food security assessments for Kenya's counties. It builds a monthly county risk index, validated against the official IPC assessments, and tests whether climate signals improve short-term maize price forecasts.
 
 Food crises in Kenya's arid and semi-arid counties build up over months, but the official IPC assessments are published about twice a year. The signals in between (prices, rainfall, pasture) are spread across sources with different formats, geographies and schedules. This project reconciles them into one tested, county-level warehouse that refreshes monthly.
