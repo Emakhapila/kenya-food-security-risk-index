@@ -28,6 +28,11 @@ def load():
     return data.load_index(), data.load_ipc()
 
 
+@st.cache_data(ttl=6 * 3600, show_spinner=False)
+def load_prices_and_forecast():
+    return data.load_prices(), data.load_forecast()
+
+
 try:
     index, ipc = load()
 except Exception as exc:  # visitors see the error type; the full traceback goes to the app logs
@@ -83,6 +88,49 @@ with right:
             "and vegetation are."
         )
 
+st.divider()
+st.header("Maize price outlook")
+try:
+    prices, fc = load_prices_and_forecast()
+except Exception:
+    traceback.print_exc()
+    prices, fc = None, None
+
+if fc is None or fc.empty:
+    st.info("The price forecast has not been published yet.")
+else:
+    origin = fc["origin_month"].max()
+    st.markdown(
+        f"Retail white maize prices in the **16 counties** with FEWS NET price data, and the "
+        f"forecast from **{origin:%B %Y}**. One month ahead, the forecast is the latest price: "
+        f"in testing, nothing beat it. Two and three months ahead it comes from a model that "
+        f"also uses rainfall and vegetation, which cut 3-month errors by about 7% in testing. "
+        f"The 80% range shows how far off these forecasts have been over the last three years."
+    )
+    pcol, tcol = st.columns([7, 5], gap="large")
+    with pcol:
+        if pcode in set(fc["county_pcode"]):
+            st.subheader(f"{county_name}")
+            st.altair_chart(charts.price_outlook(prices, fc, pcode), width="stretch")
+            if fc.loc[fc["county_pcode"] == pcode, "is_low_resolution"].any():
+                st.caption(f"{county_name}'s prices are reported in coarse steps, so its "
+                           "forecast is less reliable than the others.")
+        else:
+            st.info(f"There is no FEWS NET maize price series for {county_name}. "
+                    "Choose one of the counties in the table to see its forecast.")
+    with tcol:
+        st.subheader("All 16 counties, KES/kg")
+        st.dataframe(
+            data.forecast_table(fc),
+            width="stretch",
+            height=35 * (fc["county_pcode"].nunique() + 1) + 3,
+            column_config={
+                "Latest": st.column_config.NumberColumn(format="%.0f"),
+                "In 3 months": st.column_config.NumberColumn(format="%.0f"),
+                "Change, %": st.column_config.NumberColumn(format="%+.1f"),
+            },
+        )
+
 with st.expander("How to read this, and what it can't tell you"):
     st.markdown(f"""
 - **What it measures.** Each month, the last 3 months of rainfall and the current vegetation
@@ -95,6 +143,9 @@ with st.expander("How to read this, and what it can't tell you"):
   - Chronic food insecurity: it compares a county with its own past, not with other counties.
   - Flood risk: very wet seasons read as low risk even when floods damage crops and markets.
   - It uses observed data only, not rainfall forecasts.
+- **Price forecasts.** The 80% range describes recent forecast errors; a shock unlike the last
+  three years can fall outside it. The 2–3 month model's gain over "latest price" is consistent
+  in testing but not yet proven.
 - **Coverage.** Rainfall and vegetation for 39 counties are estimated from a sample of sub-counties.
 
 Method, tests and every design decision: [GitHub repository]({REPO}) ·
@@ -103,5 +154,6 @@ Method, tests and every design decision: [GitHub repository]({REPO}) ·
 
 st.caption(
     "Sources: CHIRPS rainfall and MODIS NDVI (Climate Hazards Center, NASA and WFP, via HDX); "
-    "IPC Kenya acute food insecurity (via HDX). Licences in the repository README. Built by Emmanuel."
+    "IPC Kenya acute food insecurity (via HDX); retail maize prices from FEWS NET via FAO GIEWS FPMA "
+    "(CC BY-NC-SA, shared under the same terms). Licences in the repository README. Built by Emmanuel."
 )

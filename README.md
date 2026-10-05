@@ -75,7 +75,7 @@ flowchart LR
 | Ingestion | Downloads the HDX sources through HDX's API (FPMA is a manual export); loads each file; skips unchanged files; stores each distinct row once, so revised values arrive as new rows and nothing is overwritten. Every run is logged. | [`ingest/`](ingest/) |
 | Reference | Official 47 counties with 2019 census population, and a table mapping every source's county spelling to an official code. The build fails if a source name is unmapped. | [`scripts/build_reference.py`](scripts/build_reference.py), [`dbt/seeds/`](dbt/seeds/) |
 | Staging | Types every column, keeps the latest version of each value, maps counties to official codes. | [`dbt/models/staging/`](dbt/models/staging/) |
-| Marts | Monthly maize price per county (every month present, gaps explicit, flat runs flagged); monthly rainfall and vegetation per county with anomalies; IPC Phase 3+ share per county per analysis; monthly county risk index (rainfall and vegetation percentiles against each county's own history; price kept for analysis) and its alignment to each IPC analysis. | [`dbt/models/marts/`](dbt/models/marts/) |
+| Marts | Monthly maize price per county (every month present, gaps explicit, flat runs flagged); monthly rainfall and vegetation per county with anomalies; IPC Phase 3+ share per county per analysis; monthly county risk index (rainfall and vegetation percentiles against each county's own history; price kept for analysis) and its alignment to each IPC analysis; the latest published maize price forecast. | [`dbt/models/marts/`](dbt/models/marts/) |
 | Modelling | Rolling-origin backtest of six forecasting approaches with bootstrap confidence intervals; validation of the risk index against IPC, as pre-registered in DL-022. | [`modelling/`](modelling/) |
 
 ## What the data required
@@ -115,6 +115,8 @@ python -m ingest.run --download              # download HDX sources, then load a
 python scripts/run_dbt.py build              # staging, marts and tests
 python -m modelling.backtest_maize --test-months 60
 python -m modelling.validate_index          # risk index vs IPC (DL-022)
+python -m modelling.forecast_maize           # publish the maize price forecast (DL-025)
+python scripts/run_dbt.py build --select fct_price_forecast
 streamlit run dashboard/app.py               # dashboard at http://localhost:8501
 python -m pytest tests/
 ```
@@ -138,9 +140,9 @@ Raw data is not included in this repository. The FEWS NET/FPMA data is licensed 
 
 ## Status
 
-**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC, automatic HDX downloads, CI and a scheduled monthly refresh.
+**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC, automatic HDX downloads, CI and a scheduled monthly refresh, a published monthly price forecast (DL-025), a live dashboard.
 
-**Next:** a small public dashboard (Streamlit); a separate excess-rainfall (flood) signal, since the index currently measures drought only; a projected index from seasonal rainfall forecasts, shown beside the observed one; staging for WFP prices; an API. Each new signal gets its own validation before it is published.
+**Next:** the written AWS target architecture (DL-013). **Later (v2):** a separate excess-rainfall (flood) signal, since the index currently measures drought only; a projected index from seasonal rainfall forecasts, shown beside the observed one; staging for WFP prices; an API. Each new signal gets its own validation before it is published.
 
 ## Documentation
 

@@ -15,3 +15,10 @@ sources:
       - name: rainfall
       - name: ndvi
       - name: ipc
+
+  - name: forecasts
+    description: Written by modelling/forecast_maize.py, append-only (DL-025).
+    schema: forecasts
+    tables:
+      - name: maize_price_forecast_runs
+        description: Every forecast run's rows; never updated or deleted.
