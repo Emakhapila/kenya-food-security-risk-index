@@ -77,3 +77,49 @@ def snapshot(index: pd.DataFrame, month: pd.Timestamp) -> pd.DataFrame:
     s["direction"] = s["deviation"].map(
         lambda d: "Drier/browner than usual" if d > 0 else "Wetter/greener than usual")
     return s.sort_values("risk_index", ascending=False).reset_index(drop=True)
+
+
+def load_forecast() -> pd.DataFrame:
+    df = query("""
+        SELECT county_pcode, county_name, origin_month, target_month, horizon, model,
+               last_price_kes_per_kg, forecast_kes_per_kg, lower_80_kes_per_kg,
+               upper_80_kes_per_kg, change_pct, is_low_resolution
+        FROM marts.fct_price_forecast
+    """)
+    for c in ("origin_month", "target_month"):
+        df[c] = pd.to_datetime(df[c])
+    for c in ("last_price_kes_per_kg", "forecast_kes_per_kg", "lower_80_kes_per_kg",
+              "upper_80_kes_per_kg", "change_pct"):
+        df[c] = pd.to_numeric(df[c], errors="coerce").astype(float)
+    return df
+
+
+def load_prices(months: int = 36) -> pd.DataFrame:
+    df = query("""
+        SELECT county_pcode, month, price_kes_per_kg
+        FROM marts.fct_maize_price_monthly
+        WHERE price_kes_per_kg IS NOT NULL
+          AND month >= (SELECT max(month) FROM marts.fct_maize_price_monthly)
+                       - make_interval(months => %s)
+    """, (months,))
+    df["month"] = pd.to_datetime(df["month"])
+    df["price_kes_per_kg"] = df["price_kes_per_kg"].astype(float)
+    return df
+
+
+def forecast_table(fc: pd.DataFrame) -> pd.DataFrame:
+    """One row per county: latest price and the 3-month forecast with its range.
+
+    The 1-month forecast is the latest price (naive), so it is not repeated.
+    """
+    h3 = fc[fc["horizon"] == 3].set_index("county_name")
+    last = fc.drop_duplicates("county_name").set_index("county_name")["last_price_kes_per_kg"]
+    out = pd.DataFrame({
+        "Latest": last,
+        "In 3 months": h3["forecast_kes_per_kg"],
+        "80% range": h3["lower_80_kes_per_kg"].round(0).astype("Int64").astype(str)
+                                 + "–" + h3["upper_80_kes_per_kg"].round(0).astype("Int64").astype(str),
+        "Change, %": h3["change_pct"],
+    })
+    out.index.name = "County"
+    return out.sort_values("Change, %", ascending=False)

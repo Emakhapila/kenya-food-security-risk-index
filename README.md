@@ -142,7 +142,7 @@ Raw data is not included in this repository. The FEWS NET/FPMA data is licensed 
 
 **Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC, automatic HDX downloads, CI and a scheduled monthly refresh, a published monthly price forecast (DL-025), a live dashboard.
 
-**Next:** the dashboard's forecast view; the written AWS target architecture (DL-013). **Later (v2):** a separate excess-rainfall (flood) signal, since the index currently measures drought only; a projected index from seasonal rainfall forecasts, shown beside the observed one; staging for WFP prices; an API. Each new signal gets its own validation before it is published.
+**Next:** the written AWS target architecture (DL-013). **Later (v2):** a separate excess-rainfall (flood) signal, since the index currently measures drought only; a projected index from seasonal rainfall forecasts, shown beside the observed one; staging for WFP prices; an API. Each new signal gets its own validation before it is published.
 
 ## Documentation
 

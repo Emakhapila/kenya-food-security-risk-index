@@ -249,6 +249,8 @@ Refined by DL-014: forecast scope is now wholesale maize in five main markets.
 
 **Deployed (2026-10-05).** Live at https://kenya-food-security-index.streamlit.app/ on Streamlit Community Cloud. The app connects through Neon's pooled endpoint as `dashboard_reader`, a role with `SELECT` on schema `marts` only (no access to `raw`, `staging` or `reference`, no writes). Because dbt rebuilds mart tables on every run, the grant uses `ALTER DEFAULT PRIVILEGES IN SCHEMA marts GRANT SELECT ON TABLES TO dashboard_reader`, so rebuilt tables stay readable; tested through a full rebuild before deploying. Locally the app uses `DASHBOARD_DATABASE_URL` when set, so it can be run with the same read-only access. Load errors show visitors only the error type; the traceback goes to the app's private logs. Free-tier apps sleep when unused and take about 30 seconds to wake.
 
+**Forecast view (2026-10-05).** Below the risk view: for the selected county (if it has FEWS NET prices), the last 18 months of observed price and the forecast (DL-025) as a dashed continuation with 80% ranges as error bars, on one price axis; and a table of all 16 counties with the latest price, the 3-month forecast, its range and the expected change. The 1-month forecast is not repeated in the table, since it equals the latest price (naive). FEWS NET prices are shown under their CC BY-NC-SA licence, with attribution.
+
 ---
 
 ## DL-013 — AWS as documented target architecture, not deployed in v1

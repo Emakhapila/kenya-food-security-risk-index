@@ -72,3 +72,33 @@ def test_dashboard_prefers_the_read_only_connection(monkeypatch, tmp_path):
     assert data.database_url() == "postgresql://dashboard_reader@h/db"
     monkeypatch.delenv("DASHBOARD_DATABASE_URL")
     assert data.database_url() == "postgresql://owner@h/db"
+
+
+def forecast_frame():
+    rows = []
+    for c, name, last in (("KE001", "County 0", 50.0), ("KE002", "County 1", 80.0)):
+        for h, (f, lo, hi) in {1: (last, last * .9, last * 1.1), 2: (last * .97, last * .85, last * 1.05),
+                               3: (last * .95, last * .8, last * 1.04)}.items():
+            rows.append({"county_pcode": c, "county_name": name,
+                         "origin_month": pd.Timestamp("2025-05-01"),
+                         "target_month": pd.Timestamp("2025-05-01") + pd.DateOffset(months=h),
+                         "horizon": h, "model": "naive" if h == 1 else "lightgbm_climate",
+                         "last_price_kes_per_kg": last, "forecast_kes_per_kg": f,
+                         "lower_80_kes_per_kg": lo, "upper_80_kes_per_kg": hi,
+                         "change_pct": round(100 * (f / last - 1), 1), "is_low_resolution": False})
+    return pd.DataFrame(rows)
+
+
+def test_forecast_table_has_one_row_per_county_and_a_3_month_range():
+    t = data.forecast_table(forecast_frame())
+    assert list(t.index) == ["County 0", "County 1"] or set(t.index) == {"County 0", "County 1"}
+    assert t.index.name == "County"
+    assert list(t.columns) == ["Latest", "In 3 months", "80% range", "Change, %"]
+    assert t.loc["County 1", "80% range"] == "64–83"
+
+
+def test_price_outlook_chart_builds():
+    prices = pd.DataFrame({"county_pcode": "KE001",
+                           "month": pd.date_range("2024-01-01", "2025-05-01", freq="MS"),
+                           "price_kes_per_kg": 50.0})
+    charts.price_outlook(prices, forecast_frame(), "KE001").to_dict()

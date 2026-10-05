@@ -98,3 +98,44 @@ def county_history(index: pd.DataFrame, ipc: pd.DataFrame, county: str,
         width="container", height=170, title=alt.TitleParams("People in IPC Phase 3+ (crisis or worse), each assessment",
                                           anchor="start", fontSize=13, color="#0b0b0b"))
     return _base(top), _base(bottom)
+
+
+def price_outlook(prices: pd.DataFrame, fc: pd.DataFrame, county: str) -> alt.Chart:
+    """Observed monthly price, then the forecast as a dashed continuation with 80% ranges.
+
+    One series on one price axis: observed and forecast share a colour and differ
+    by line style; the ranges are error bars at each forecast month.
+    """
+    hist = prices[prices["county_pcode"] == county].sort_values("month")
+    f = fc[fc["county_pcode"] == county].sort_values("horizon")
+    origin = f["origin_month"].iloc[0]
+    hist = hist[(hist["month"] <= origin) & (hist["month"] > origin - pd.DateOffset(months=18))]
+    bridge = pd.concat([
+        pd.DataFrame({"month": [origin], "price": [f["last_price_kes_per_kg"].iloc[0]]}),
+        f.rename(columns={"target_month": "month", "forecast_kes_per_kg": "price"})[["month", "price"]],
+    ])
+    x = alt.X("month:T", title=None, axis=alt.Axis(format="%b %Y", labelAngle=0, tickCount=6))
+    y_title = "Retail white maize, KES/kg"
+    observed = alt.Chart(hist).mark_line(color=INDEX_LINE, strokeWidth=2).encode(
+        x=x, y=alt.Y("price_kes_per_kg:Q", title=y_title, scale=alt.Scale(zero=False)))
+    observed_pts = alt.Chart(hist).mark_point(opacity=0, size=60).encode(
+        x=x, y="price_kes_per_kg:Q",
+        tooltip=[alt.Tooltip("month:T", title="Month", format="%b %Y"),
+                 alt.Tooltip("price_kes_per_kg:Q", title="Observed, KES/kg", format=".0f")])
+    dashed = alt.Chart(bridge).mark_line(color=INDEX_LINE, strokeWidth=2, strokeDash=[5, 4]).encode(
+        x=x, y="price:Q")
+    ranges = alt.Chart(f).mark_rule(color=INDEX_LINE, strokeWidth=2, opacity=0.45).encode(
+        x=alt.X("target_month:T"), y="lower_80_kes_per_kg:Q", y2="upper_80_kes_per_kg:Q")
+    points = alt.Chart(f).mark_point(filled=True, size=70, color=INDEX_LINE,
+                                     stroke="#fcfcfb", strokeWidth=2).encode(
+        x=alt.X("target_month:T"), y="forecast_kes_per_kg:Q",
+        tooltip=[alt.Tooltip("target_month:T", title="Forecast for", format="%b %Y"),
+                 alt.Tooltip("forecast_kes_per_kg:Q", title="Forecast, KES/kg", format=".0f"),
+                 alt.Tooltip("lower_80_kes_per_kg:Q", title="80% range from", format=".0f"),
+                 alt.Tooltip("upper_80_kes_per_kg:Q", title="80% range to", format=".0f"),
+                 alt.Tooltip("model:N", title="Model")])
+    start = alt.Chart(pd.DataFrame({"x": [origin]})).mark_rule(color=GRID, strokeWidth=1).encode(x="x:T")
+    return _base(alt.layer(start, observed, observed_pts, dashed, ranges, points).properties(
+        width="container", height=260,
+        title=alt.TitleParams("Observed price (solid) and forecast with 80% range (dashed)",
+                              anchor="start", fontSize=13, color="#0b0b0b")))
