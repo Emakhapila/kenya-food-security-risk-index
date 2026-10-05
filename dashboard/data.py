@@ -1,7 +1,8 @@
 """Read the marts the dashboard shows. Read-only: SELECT statements only.
 
-The connection string comes from DATABASE_URL: the environment or .env locally,
-st.secrets on Streamlit Community Cloud. Use a read-only database role.
+The connection string comes from DASHBOARD_DATABASE_URL (the read-only role) if
+set, otherwise DATABASE_URL: from the environment or .env locally, st.secrets on
+Streamlit Community Cloud. The public app always uses the read-only role.
 """
 from __future__ import annotations
 
@@ -17,8 +18,9 @@ COMPLETE_SHARE = 0.9   # a month counts as published once 90% of counties have a
 def database_url() -> str:
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
-    if os.environ.get("DATABASE_URL"):
-        return os.environ["DATABASE_URL"]
+    for name in ("DASHBOARD_DATABASE_URL", "DATABASE_URL"):
+        if os.environ.get(name):
+            return os.environ[name]
     import streamlit as st
     return st.secrets["DATABASE_URL"]
 
