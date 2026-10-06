@@ -4,7 +4,7 @@
 
 **Live dashboard: [kenya-food-security-index.streamlit.app](https://kenya-food-security-index.streamlit.app/)**, updated monthly.
 
-An end-to-end data pipeline that brings together maize prices, rainfall, vegetation and official food security assessments for Kenya's counties. It builds a monthly county risk index, validated against the official IPC assessments, and tests whether climate signals improve short-term maize price forecasts.
+An end-to-end data pipeline that brings together maize prices, rainfall, vegetation and official food security assessments for Kenya's counties. It builds a monthly county risk index, validated against the official IPC assessments, and publishes a monthly maize price forecast after testing whether climate signals improve it.
 
 Food crises in Kenya's arid and semi-arid counties build up over months, but the official IPC assessments are published about twice a year. The signals in between (prices, rainfall, pasture) are spread across sources with different formats, geographies and schedules. This project reconciles them into one tested, county-level warehouse that refreshes monthly.
 
@@ -98,6 +98,43 @@ Most of the work was in understanding the sources before loading them. Some of t
 - **Confidence intervals** resample forecast origins rather than individual forecasts, because counties in the same month share market conditions.
 - **Missing months are not imputed.** Both SARIMAX and LightGBM handle gaps directly; filling them would invent data.
 
+## Limitations
+
+**Risk index**
+- It measures **shocks**: how unusual conditions are for a county compared with its own history. It does not measure chronic food insecurity, so it cannot rank how food-insecure counties are relative to each other (DL-022).
+- It measures **drought, not floods**. Rainfall counts in one direction, so a very wet season reads as low risk even when floods damage crops and markets (for example, the late-2023 El Niño rains). It uses observed data only, not rainfall forecasts.
+- It is **validated only where IPC assesses whole counties**: 19 dryland counties, 12 assessments (2021–2026). Elsewhere it is unvalidated. The test shows the index moves with IPC within counties; it is not a forecast of Phase 3+ levels, and 12 assessments give wide intervals (DL-023).
+- Rainfall and vegetation for 39 counties are **estimated from 1–4 sub-counties**, using the publisher's own aggregation (DL-002, DL-017).
+
+**Price forecast**
+- It covers **16 mostly dryland counties**, those with FEWS NET retail maize prices (DL-016).
+- FEWS NET has no API, so prices are **exported by hand each month**. The forecast is only as current as the last export.
+- At 2–3 months, the gain over "latest price" is **consistent but not proven**: the 95% interval just includes zero (DL-021).
+- The 80% ranges come from the last three years of errors, so a shock unlike those years can fall outside them (DL-025). Garissa's prices are reported in coarse steps, so its forecast is less reliable.
+
+**Pipeline**
+- The raw layer stores every version of every row but cannot tell a row deleted at the source from an unchanged one. A test stops the build if this would double-count an IPC area (DL-019).
+- It runs on free tiers. The dashboard sleeps when unused and takes about 30 seconds to wake.
+
+The [decision log](docs/decisions.md) keeps the full running list, with the evidence for each item.
+
+## Scope of v1
+
+**In v1:**
+- data pipeline, warehouse and tests;
+- the risk index and its pre-registered validation;
+- the price backtest and the published monthly forecast;
+- the live dashboard;
+- automatic monthly refresh;
+- a written AWS target architecture.
+
+**Planned for v2,** each to be validated before it is published:
+- a separate excess-rainfall (flood) signal;
+- a projected index driven by seasonal rainfall forecasts;
+- WFP price staging for town markets;
+- deploying the [AWS architecture](docs/aws-architecture.md);
+- an API.
+
 ## Running it
 
 Requirements: Python 3.11 and a PostgreSQL database.
@@ -123,7 +160,7 @@ python -m pytest tests/
 
 `scripts/run_dbt.py` reads the connection from `DATABASE_URL`, so the credentials live in one place.
 
-**Automation** ([`.github/workflows/`](.github/workflows/)): every pull request runs the tests and parses the dbt project. On the 8th of each month a scheduled run downloads the HDX sources, rebuilds the warehouse on Neon and re-runs the index validation, attaching the results to the run. It needs one repository secret, `DATABASE_URL`. FEWS NET/FPMA prices have no API and are exported and loaded by hand each month.
+**Automation** ([`.github/workflows/`](.github/workflows/)): every pull request runs the tests and parses the dbt project. On the 8th of each month a scheduled run downloads the HDX sources, rebuilds the warehouse on Neon and publishes the price forecast and re-runs the index validation, attaching the results to the run. It needs one repository secret, `DATABASE_URL`. FEWS NET/FPMA prices have no API and are exported and loaded by hand each month.
 
 ## Data sources and licences
 
@@ -140,14 +177,15 @@ Raw data is not included in this repository. The FEWS NET/FPMA data is licensed 
 
 ## Status
 
-**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC, automatic HDX downloads, CI and a scheduled monthly refresh, a published monthly price forecast (DL-025), a live dashboard.
+**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC, automatic HDX downloads, CI and a scheduled monthly refresh, a published monthly price forecast (DL-025), a live dashboard, a written AWS target architecture (DL-013). **v1 is complete.**
 
-**Next:** the written AWS target architecture (DL-013). **Later (v2):** a separate excess-rainfall (flood) signal, since the index currently measures drought only; a projected index from seasonal rainfall forecasts, shown beside the observed one; staging for WFP prices; an API. Each new signal gets its own validation before it is published.
+**Next:** see [Scope of v1](#scope-of-v1) for what v2 adds.
 
 ## Documentation
 
 - [Decision log](docs/decisions.md): every significant design decision, with the evidence behind it
 - [Data sources](docs/data-sources.md): what each source contains and the problems found in profiling
+- [AWS target architecture](docs/aws-architecture.md): how the pipeline would run on AWS, with a monthly cost estimate (v2)
 
 ---
 
