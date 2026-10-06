@@ -263,6 +263,17 @@ Refined by DL-014: forecast scope is now wholesale maize in five main markets.
 
 **Revisit if.** v1 ships on schedule. Set up a billing alarm before creating any resources.
 
+**Written (2026-10-06).** [`docs/aws-architecture.md`](aws-architecture.md):
+- EventBridge Scheduler starts a monthly ECS Fargate task (the same container as the GitHub workflow).
+- The raw zone is a versioned S3 bucket, and the warehouse is an RDS PostgreSQL db.t4g.micro in private subnets.
+- Credentials are in Secrets Manager, and GitHub pushes images through OIDC, with no stored keys.
+- The dashboard reads a Parquet snapshot of the marts from S3 instead of the database.
+- About $15/month in us-east-1 with the dashboard on free hosting, or about $46/month with the dashboard on ECS behind a load balancer.
+
+Two changes from the original sketch:
+- **Fargate rather than Lambda:** container size, and no 15-minute limit.
+- **A snapshot for the dashboard instead of database access:** this keeps the database private and avoids a load balancer.
+
 ---
 
 ## DL-014 — Maize price series: no cross-name joining; forecast on wholesale 2006–2022
