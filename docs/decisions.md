@@ -664,6 +664,18 @@ Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % ano
 
   That is why the checker must also deny those functions. To be repeated on Neon with the real role before release.
 
+**Checker and read-only runner built (2026-10-27).** `nlq/guard.py`, `nlq/db.py`, and 111 tests in `tests/test_guard.py` and `tests/test_nlq_db.py`, still with no model.
+
+- **The checker on its own:**
+  - rejects all 12 attack probes, plus 49 further cases (data-modifying CTEs, `FOR UPDATE`, `COPY … PROGRAM`, other schemas, quoted look-alike schemas, server-information functions and keywords, joins without a condition);
+  - allows all 40 reference queries.
+- **The rewrite changes nothing:** what runs is sqlglot's rendering of the checked query, so what was checked is what runs. All 40 reference queries return identical results before and after the rewrite (local PostgreSQL 16, synthetic data).
+- **Two findings while building:**
+  1. sqlglot renames some functions internally (`version()` becomes `CURRENT_VERSION`), so a check on its names alone missed it. Functions are now checked under both names.
+  2. A deliberate row explosion with a trivial condition (`JOIN … ON true`) passes the checker. The statement timeout is the layer that stops it, and a test records this as a known gap.
+- **Settings are applied inside each transaction:** read-only and a 5-second timeout via `SET TRANSACTION` / `SET LOCAL`, and the transaction is always rolled back. They are not set as connection options because Neon's pooled endpoint shares sessions.
+- **`python -m nlq.check_on_database`** repeats both database checks against the real `dashboard_reader`. It only uses `DASHBOARD_DATABASE_URL` and refuses to run with a login that can write.
+
 **Revisit if.** Accuracy falls below target after a mart change, an attack gets through in testing or use, or the monthly model cost goes over budget.
 
 ---
