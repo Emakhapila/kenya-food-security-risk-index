@@ -1,0 +1,614 @@
+# Accuracy set for "Ask the data" (DL-026). Written before any generator code.
+#
+# Each question has a hand-written reference query. A generated query passes
+# when its result matches the reference result under the rules in DL-026:
+#   - every reference column matches some column of the generated result
+#     (extra columns are allowed; column names and order are ignored), so
+#     reference queries return only the columns the question asks for
+#   - numbers are compared after rounding to 2 decimals; a 0-1 share and the
+#     same share as a percentage count as equal
+#   - row order matters only when `ordered: true`
+#
+# split: dev  = may be used to improve the prompt and as worked examples
+#        test = never shown to the model or used for tuning; scored once the
+#               prompt is frozen
+#
+# Definitions the reference queries follow (they also go into the model's context):
+#   "latest complete month" (risk index) = the latest month in which at least
+#       43 of 47 counties (90%) have a risk_index, as on the dashboard
+#   "last N complete months" = the N latest such months
+#   "drier than usual" = risk_index > 0.5; "strongly unusual" = risk_index >= 0.8
+#   "3-month forecast" = fct_price_forecast with horizon = 3
+#   "pre-analysis index" = index_v2_climate_pre3 (the published rain + NDVI
+#       index, averaged over the 3 months before an IPC analysis)
+
+questions:
+
+  # ---------- easy ----------
+
+  - id: q01
+    split: test
+    difficulty: easy
+    question: How many counties does the risk index cover?
+    ordered: false
+    sql: |
+      select count(distinct county_pcode) as counties
+      from marts.fct_risk_index_monthly
+
+  - id: q02
+    split: dev
+    difficulty: easy
+    question: What is the latest complete month of the risk index?
+    ordered: false
+    sql: |
+      select max(month) as latest_complete_month
+      from (
+          select month
+          from marts.fct_risk_index_monthly
+          group by month
+          having count(risk_index) >= 43
+      ) m
+
+  - id: q03
+    split: test
+    difficulty: easy
+    question: Which 5 counties had the highest risk index in the latest complete month?
+    ordered: true
+    sql: |
+      with latest as (
+          select max(month) as month
+          from (select month from marts.fct_risk_index_monthly
+                group by month having count(risk_index) >= 43) m
+      )
+      select r.county_name
+      from marts.fct_risk_index_monthly r
+      join latest l on r.month = l.month
+      order by r.risk_index desc
+      limit 5
+
+  - id: q04
+    split: test
+    difficulty: easy
+    question: What was Marsabit's risk index in September 2026?
+    ordered: false
+    sql: |
+      select risk_index
+      from marts.fct_risk_index_monthly
+      where county_name = 'Marsabit'
+        and month = date '2026-09-01'
+
+  - id: q05
+    split: dev
+    difficulty: easy
+    question: How many counties were drier or browner than usual in the latest complete month?
+    ordered: false
+    sql: |
+      with latest as (
+          select max(month) as month
+          from (select month from marts.fct_risk_index_monthly
+                group by month having count(risk_index) >= 43) m
+      )
+      select count(*) as counties_drier_than_usual
+      from marts.fct_risk_index_monthly r
+      join latest l on r.month = l.month
+      where r.risk_index > 0.5
+
+  - id: q06
+    split: test
+    difficulty: easy
+    question: Which counties have a maize price forecast?
+    ordered: false
+    sql: |
+      select distinct county_name
+      from marts.fct_price_forecast
+
+  - id: q07
+    split: test
+    difficulty: easy
+    question: In the latest month with any observed maize price, which county had the highest price?
+    ordered: false
+    sql: |
+      with latest as (
+          select max(month) as month
+          from marts.fct_maize_price_monthly
+          where price_kes_per_kg is not null
+      )
+      select p.county_name
+      from marts.fct_maize_price_monthly p
+      join latest l on p.month = l.month
+      where p.price_kes_per_kg is not null
+      order by p.price_kes_per_kg desc
+      limit 1
+
+  - id: q08
+    split: test
+    difficulty: easy
+    question: When was the most recent IPC analysis?
+    ordered: false
+    sql: |
+      select max(analysis_month) as latest_analysis_month
+      from marts.fct_ipc_county_analysis
+
+  - id: q09
+    split: dev
+    difficulty: easy
+    question: What share of Turkana's population was in IPC Phase 3 or worse in the most recent analysis of Turkana?
+    ordered: false
+    sql: |
+      select share_phase3plus
+      from marts.fct_ipc_county_analysis
+      where county_name = 'Turkana'
+      order by analysis_month desc
+      limit 1
+
+  - id: q10
+    split: test
+    difficulty: easy
+    question: Which counties have IPC analyses that cover only part of the county?
+    ordered: false
+    sql: |
+      select distinct county_name
+      from marts.fct_ipc_county_analysis
+      where is_partial_county
+
+  # ---------- medium ----------
+
+  - id: q11
+    split: test
+    difficulty: medium
+    question: For each of the last 6 complete months, how many counties had a risk index of 0.8 or more?
+    ordered: false
+    sql: |
+      with months as (
+          select month
+          from marts.fct_risk_index_monthly
+          group by month
+          having count(risk_index) >= 43
+          order by month desc
+          limit 6
+      )
+      select r.month,
+             count(*) filter (where r.risk_index >= 0.8) as strongly_unusual_counties
+      from marts.fct_risk_index_monthly r
+      join months using (month)
+      group by r.month
+
+  - id: q12
+    split: dev
+    difficulty: medium
+    question: Which counties have been drier than usual in each of the last 3 complete months?
+    ordered: false
+    sql: |
+      with months as (
+          select month
+          from marts.fct_risk_index_monthly
+          group by month
+          having count(risk_index) >= 43
+          order by month desc
+          limit 3
+      )
+      select r.county_name
+      from marts.fct_risk_index_monthly r
+      join months using (month)
+      group by r.county_name
+      having count(*) filter (where r.risk_index > 0.5) = 3
+
+  - id: q13
+    split: test
+    difficulty: medium
+    question: What was Marsabit's average risk index in 2025?
+    ordered: false
+    sql: |
+      select avg(risk_index) as avg_risk_index_2025
+      from marts.fct_risk_index_monthly
+      where county_name = 'Marsabit'
+        and month >= date '2025-01-01'
+        and month <  date '2026-01-01'
+
+  - id: q14
+    split: test
+    difficulty: medium
+    question: Which county's risk index rose the most between the same month a year earlier and the latest complete month?
+    ordered: false
+    sql: |
+      with latest as (
+          select max(month) as month
+          from (select month from marts.fct_risk_index_monthly
+                group by month having count(risk_index) >= 43) m
+      )
+      select a.county_name
+      from marts.fct_risk_index_monthly a
+      join latest l on a.month = l.month
+      join marts.fct_risk_index_monthly b
+        on b.county_pcode = a.county_pcode
+       and b.month = (l.month - interval '12 months')::date
+      order by a.risk_index - b.risk_index desc
+      limit 1
+
+  - id: q15
+    split: test
+    difficulty: medium
+    question: In the latest month with complete rainfall data, what was Elgeyo-Marakwet's 3-month rainfall as a percentage of normal?
+    ordered: false
+    sql: |
+      select rain_3m_anom_pct
+      from marts.fct_climate_county_monthly
+      where county_name = 'Elgeyo-Marakwet'
+        and rain_month_complete
+        and rain_3m_anom_pct is not null
+      order by month desc
+      limit 1
+
+  - id: q16
+    split: dev
+    difficulty: medium
+    question: Show the 3-month maize price forecast for every county with its 80% range, from the largest expected rise to the largest fall.
+    ordered: true
+    sql: |
+      select county_name, forecast_kes_per_kg,
+             lower_80_kes_per_kg, upper_80_kes_per_kg
+      from marts.fct_price_forecast
+      where horizon = 3
+      order by change_pct desc
+
+  - id: q17
+    split: test
+    difficulty: medium
+    question: Which counties are forecast to see maize prices rise by more than 5% in 3 months?
+    ordered: false
+    sql: |
+      select county_name
+      from marts.fct_price_forecast
+      where horizon = 3
+        and change_pct > 5
+
+  - id: q18
+    split: test
+    difficulty: medium
+    question: What was the average of all observed county-month maize prices in each year since 2020?
+    ordered: false
+    sql: |
+      select extract(year from month)::int as year,
+             avg(price_kes_per_kg) as avg_price_kes_per_kg
+      from marts.fct_maize_price_monthly
+      where price_kes_per_kg is not null
+        and month >= date '2020-01-01'
+      group by 1
+
+  - id: q19
+    split: test
+    difficulty: medium
+    question: How many months of Garissa's maize price series are flagged as part of a flat run?
+    ordered: false
+    sql: |
+      select count(*) as flat_run_months
+      from marts.fct_maize_price_monthly
+      where county_name = 'Garissa'
+        and is_flat_run
+
+  - id: q20
+    split: dev
+    difficulty: medium
+    question: In the most recent IPC analysis, which 5 counties had the highest share of people in Phase 3 or worse?
+    ordered: true
+    sql: |
+      with latest as (
+          select max(analysis_month) as analysis_month
+          from marts.fct_ipc_county_analysis
+      )
+      select i.county_name
+      from marts.fct_ipc_county_analysis i
+      join latest l on i.analysis_month = l.analysis_month
+      order by i.share_phase3plus desc
+      limit 5
+
+  - id: q21
+    split: test
+    difficulty: medium
+    question: List every IPC analysis month and how many counties each one covered.
+    ordered: false
+    sql: |
+      select analysis_month, count(*) as counties
+      from marts.fct_ipc_county_analysis
+      group by analysis_month
+
+  - id: q22
+    split: test
+    difficulty: medium
+    question: Which counties' rainfall and vegetation are estimated from sub-county units?
+    ordered: false
+    sql: |
+      select distinct county_name
+      from marts.fct_climate_county_monthly
+      where climate_source_level = 'adm2_proxy'
+
+  - id: q23
+    split: test
+    difficulty: medium
+    question: What was Turkana's vegetation (NDVI) as a percentage of normal in each month of 2025?
+    ordered: false
+    sql: |
+      select month, ndvi_anom_pct
+      from marts.fct_climate_county_monthly
+      where county_name = 'Turkana'
+        and month >= date '2025-01-01'
+        and month <  date '2026-01-01'
+
+  - id: q24
+    split: dev
+    difficulty: medium
+    question: Since January 2015, which month had the most counties with a risk index of 0.8 or more? If tied, give the most recent.
+    ordered: false
+    sql: |
+      select month
+      from marts.fct_risk_index_monthly
+      where month >= date '2015-01-01'
+        and risk_index >= 0.8
+      group by month
+      order by count(*) desc, month desc
+      limit 1
+
+  - id: q25
+    split: test
+    difficulty: medium
+    question: For each IPC analysis of Marsabit, show the share in Phase 3 or worse and the risk index averaged over the 3 months before it.
+    ordered: false
+    sql: |
+      select analysis_month, share_phase3plus, index_v2_climate_pre3
+      from marts.fct_risk_index_ipc
+      where county_name = 'Marsabit'
+
+  # ---------- hard ----------
+
+  - id: q26
+    split: test
+    difficulty: hard
+    question: Which 5 counties have been drier than usual for the most months in a row, up to and including the latest complete month?
+    ordered: true
+    sql: |
+      with latest as (
+          select max(month) as month
+          from (select month from marts.fct_risk_index_monthly
+                group by month having count(risk_index) >= 43) m
+      ),
+      s as (
+          select r.county_name, r.month, r.risk_index > 0.5 as is_dry
+          from marts.fct_risk_index_monthly r
+          join latest l on r.month <= l.month
+      ),
+      last_not_dry as (
+          select county_name, max(month) filter (where not is_dry) as month
+          from s
+          group by county_name
+      )
+      select s.county_name
+      from s
+      join last_not_dry w using (county_name)
+      where s.month > coalesce(w.month, date '1900-01-01')
+      group by s.county_name
+      order by count(*) desc
+      limit 5
+
+  - id: q27
+    split: dev
+    difficulty: hard
+    question: Rank all counties by their average risk index over the last 12 complete months.
+    ordered: true
+    sql: |
+      with months as (
+          select month
+          from marts.fct_risk_index_monthly
+          group by month
+          having count(risk_index) >= 43
+          order by month desc
+          limit 12
+      )
+      select r.county_name
+      from marts.fct_risk_index_monthly r
+      join months using (month)
+      group by r.county_name
+      order by avg(r.risk_index) desc
+
+  - id: q28
+    split: test
+    difficulty: hard
+    question: For each county with maize prices, how does its latest observed price compare with the price 12 months earlier, in percent?
+    ordered: false
+    sql: |
+      with latest as (
+          select county_pcode, max(month) as month
+          from marts.fct_maize_price_monthly
+          where price_kes_per_kg is not null
+          group by county_pcode
+      )
+      select p.county_name,
+             100 * (p.price_kes_per_kg / y.price_kes_per_kg - 1) as change_pct
+      from marts.fct_maize_price_monthly p
+      join latest using (county_pcode, month)
+      join marts.fct_maize_price_monthly y
+        on y.county_pcode = p.county_pcode
+       and y.month = (p.month - interval '12 months')::date
+      where y.price_kes_per_kg is not null
+
+  - id: q29
+    split: test
+    difficulty: hard
+    question: Across all whole-county IPC analyses, what is the Pearson correlation between the Phase 3+ share and the pre-analysis risk index?
+    ordered: false
+    note: >
+      Pooled Pearson across counties is not the validated statistic (within-county
+      Spearman, DL-023). A good answer gives the number and says so.
+    sql: |
+      select corr(share_phase3plus, index_v2_climate_pre3) as pearson_r
+      from marts.fct_risk_index_ipc
+      where not is_partial_county
+        and index_v2_climate_pre3 is not null
+
+  - id: q30
+    split: test
+    difficulty: hard
+    question: Which counties were strongly unusual in the latest complete month but have never been assessed by IPC?
+    ordered: false
+    sql: |
+      with latest as (
+          select max(month) as month
+          from (select month from marts.fct_risk_index_monthly
+                group by month having count(risk_index) >= 43) m
+      )
+      select r.county_name
+      from marts.fct_risk_index_monthly r
+      join latest l on r.month = l.month
+      where r.risk_index >= 0.8
+        and r.county_pcode not in (
+            select county_pcode from marts.fct_ipc_county_analysis)
+
+  - id: q31
+    split: test
+    difficulty: hard
+    question: In which months of 2025 was Turkana's 3-month rainfall below half of normal?
+    ordered: false
+    sql: |
+      select month
+      from marts.fct_climate_county_monthly
+      where county_name = 'Turkana'
+        and month >= date '2025-01-01'
+        and month <  date '2026-01-01'
+        and rain_3m_anom_pct < 50
+
+  - id: q32
+    split: test
+    difficulty: hard
+    question: How many months of maize prices are missing for each county with price data?
+    ordered: false
+    sql: |
+      select county_name,
+             count(*) filter (where not is_observed) as missing_months
+      from marts.fct_maize_price_monthly
+      group by county_name
+
+  - id: q33
+    split: dev
+    difficulty: hard
+    question: What were the top 3 counties by risk index in each of the last 3 complete months?
+    ordered: false
+    sql: |
+      with months as (
+          select month
+          from marts.fct_risk_index_monthly
+          group by month
+          having count(risk_index) >= 43
+          order by month desc
+          limit 3
+      ),
+      ranked as (
+          select r.month, r.county_name, r.risk_index,
+                 rank() over (partition by r.month order by r.risk_index desc) as rk
+          from marts.fct_risk_index_monthly r
+          join months using (month)
+      )
+      select month, county_name
+      from ranked
+      where rk <= 3
+
+  - id: q34
+    split: test
+    difficulty: hard
+    question: At each forecast horizon, how many counties' forecasts come from each model?
+    ordered: false
+    sql: |
+      select horizon, model, count(*) as counties
+      from marts.fct_price_forecast
+      group by horizon, model
+
+  - id: q35
+    split: test
+    difficulty: hard
+    question: How wide is the 80% forecast range on average, in KES per kg, at each horizon?
+    ordered: false
+    sql: |
+      select horizon,
+             avg(upper_80_kes_per_kg - lower_80_kes_per_kg) as avg_range_width_kes_per_kg
+      from marts.fct_price_forecast
+      group by horizon
+
+  - id: q36
+    split: dev
+    difficulty: hard
+    question: Which counties had 20% or more of their population in IPC Phase 3 or worse in at least 3 analyses?
+    ordered: false
+    sql: |
+      select county_name
+      from marts.fct_ipc_county_analysis
+      where share_phase3plus >= 0.2
+      group by county_name
+      having count(*) >= 3
+
+  - id: q37
+    split: test
+    difficulty: hard
+    question: In the latest complete month, how many drier-than-usual counties had county-level climate data and how many were estimated from sub-county units?
+    ordered: false
+    sql: |
+      with latest as (
+          select max(month) as month
+          from (select month from marts.fct_risk_index_monthly
+                group by month having count(risk_index) >= 43) m
+      )
+      select r.climate_source_level, count(*) as counties_drier_than_usual
+      from marts.fct_risk_index_monthly r
+      join latest l on r.month = l.month
+      where r.risk_index > 0.5
+      group by r.climate_source_level
+
+  - id: q38
+    split: test
+    difficulty: hard
+    question: Which county was the most wetter and greener than usual in the latest complete month?
+    ordered: false
+    sql: |
+      with latest as (
+          select max(month) as month
+          from (select month from marts.fct_risk_index_monthly
+                group by month having count(risk_index) >= 43) m
+      )
+      select r.county_name
+      from marts.fct_risk_index_monthly r
+      join latest l on r.month = l.month
+      order by r.risk_index asc
+      limit 1
+
+  - id: q39
+    split: test
+    difficulty: hard
+    question: Show Mandera's risk index for each of the last 12 complete months.
+    ordered: false
+    sql: |
+      with months as (
+          select month
+          from marts.fct_risk_index_monthly
+          group by month
+          having count(risk_index) >= 43
+          order by month desc
+          limit 12
+      )
+      select r.month, r.risk_index
+      from marts.fct_risk_index_monthly r
+      join months using (month)
+      where r.county_name = 'Mandera'
+
+  - id: q40
+    split: test
+    difficulty: hard
+    question: Which counties had a higher Phase 3+ share in their latest IPC analysis than in the analysis before it?
+    ordered: false
+    sql: |
+      with a as (
+          select county_name, analysis_month, share_phase3plus,
+                 lag(share_phase3plus) over (partition by county_pcode order by analysis_month) as previous_share,
+                 row_number() over (partition by county_pcode order by analysis_month desc) as rn
+          from marts.fct_ipc_county_analysis
+      )
+      select county_name
+      from a
+      where rn = 1
+        and share_phase3plus > previous_share
