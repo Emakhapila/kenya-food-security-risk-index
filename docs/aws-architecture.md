@@ -14,7 +14,7 @@ The code stays the same. Only where things run and where files live changes:
 | Neon PostgreSQL | **RDS for PostgreSQL**, private subnet |
 | `DATABASE_URL` as a GitHub secret | **Secrets Manager**, read by the task role |
 | Run results attached to the Actions run | Written to `s3://…/reports/`, logs in **CloudWatch** |
-| Dashboard reads Neon as `dashboard_reader` | Dashboard reads a **mart snapshot from S3**; the database is never exposed |
+| Dashboard reads Neon as `dashboard_ro` (read-only) | Dashboard reads a **mart snapshot from S3**; the database is never exposed |
 
 ## Diagram
 

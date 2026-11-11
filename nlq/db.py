@@ -19,7 +19,7 @@ def reader_url() -> str:
     load_dotenv(ROOT / ".env")
     url = os.environ.get("DASHBOARD_DATABASE_URL")
     if not url:
-        raise RuntimeError("DASHBOARD_DATABASE_URL is not set (the read-only dashboard_reader login).")
+        raise RuntimeError("DASHBOARD_DATABASE_URL is not set (the read-only login, DL-012).")
     return url
 
 

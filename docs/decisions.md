@@ -250,6 +250,18 @@ Refined by DL-014: forecast scope is now wholesale maize in five main markets.
 
 **Deployed (2026-10-05).** Live at https://kenya-food-security-index.streamlit.app/ on Streamlit Community Cloud. The app connects through Neon's pooled endpoint as `dashboard_reader`, a role with `SELECT` on schema `marts` only (no access to `raw`, `staging` or `reference`, no writes). Because dbt rebuilds mart tables on every run, the grant uses `ALTER DEFAULT PRIVILEGES IN SCHEMA marts GRANT SELECT ON TABLES TO dashboard_reader`, so rebuilt tables stay readable; tested through a full rebuild before deploying. Locally the app uses `DASHBOARD_DATABASE_URL` when set, so it can be run with the same read-only access. Load errors show visitors only the error type; the traceback goes to the app's private logs. Free-tier apps sleep when unused and take about 30 seconds to wake.
 
+**Role replaced (2026-11-11).** `dashboard_reader` turned out not to be read-only.
+
+- **How it was found:** the DL-026 database check (`nlq/check_on_database.py`) asks the database what the login may do, before it runs anything. It refused to run.
+- **What the role could do:** `has_table_privilege` showed it had SELECT, but also INSERT, UPDATE and DELETE on the marts, though not TRUNCATE.
+- **Why:** Neon makes roles created in its console members of `neon_superuser`, which brings write access to all data (the pattern of `pg_write_all_data`). That overrode the SELECT-only grant above. The test before deploying had checked that rebuilt tables stayed readable, not that writes failed.
+- **The fix:**
+  - Removing the membership was not allowed (`revoke neon_superuser` failed).
+  - The app now uses `dashboard_ro`, a role created with SQL (so it has no `neon_superuser` membership). It has `CONNECT`, `USAGE` on `marts`, `SELECT` on its tables, default privileges for tables dbt rebuilds, and `default_transaction_read_only = on`.
+  - Confirmed with `has_table_privilege` (SELECT only) and by the DL-026 check passing as `dashboard_ro`.
+- **Practical risk while it lasted:** low, since the dashboard only runs its own fixed SELECT queries. But a leaked password could have changed data.
+- **Lesson:** on a managed database, check what a role can actually do, not only what was granted to it.
+
 **Forecast view (2026-10-05).** Below the risk view: for the selected county (if it has FEWS NET prices), the last 18 months of observed price and the forecast (DL-025) as a dashed continuation with 80% ranges as error bars, on one price axis; and a table of all 16 counties with the latest price, the 3-month forecast, its range and the expected change. The 1-month forecast is not repeated in the table, since it equals the latest price (naive). FEWS NET prices are shown under their CC BY-NC-SA licence, with attribution.
 
 ---
@@ -674,7 +686,16 @@ Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % ano
   1. sqlglot renames some functions internally (`version()` becomes `CURRENT_VERSION`), so a check on its names alone missed it. Functions are now checked under both names.
   2. A deliberate row explosion with a trivial condition (`JOIN … ON true`) passes the checker. The statement timeout is the layer that stops it, and a test records this as a known gap.
 - **Settings are applied inside each transaction:** read-only and a 5-second timeout via `SET TRANSACTION` / `SET LOCAL`, and the transaction is always rolled back. They are not set as connection options because Neon's pooled endpoint shares sessions.
-- **`python -m nlq.check_on_database`** repeats both database checks against the real `dashboard_reader`. It only uses `DASHBOARD_DATABASE_URL` and refuses to run with a login that can write.
+- **`python -m nlq.check_on_database`** repeats both database checks against the real read-only role. It only uses `DASHBOARD_DATABASE_URL` and refuses to run with a login that can write.
+
+**Checked on Neon (2026-11-11), as `dashboard_ro`.**
+
+- **First run:** the check refused to run, because the dashboard's role `dashboard_reader` could INSERT, UPDATE and DELETE. Roles created in Neon's console inherit write access through `neon_superuser`. The role was replaced by `dashboard_ro`, created with SQL (DL-012).
+- **Then:**
+  - all 40 reference queries returned identical results before and after the checker's rewrite;
+  - all 12 attack probes were stopped by the database layer alone: writes by the read-only transaction, system tables, `raw` and `pg_read_file` by permissions, and `pg_sleep` and the unbounded join by the 5-second timeout (about 6 s including the network);
+  - each query takes about 1 s from Nairobi to Neon in us-east-2. Response-time targets must allow for that.
+- **Weak question found:** q31 ("months of 2025 when Turkana's 3-month rainfall was below half of normal") returns no rows on the real data. Any query that returns nothing would match it, so it tests little. It will be replaced before the model's first run, and the change logged here. The test set may still change at this point because no model has seen it.
 
 **Revisit if.** Accuracy falls below target after a mart change, an attack gets through in testing or use, or the monthly model cost goes over budget.
 
