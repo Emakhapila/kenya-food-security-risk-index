@@ -1,4 +1,4 @@
-"""Check the guardrails against the real database (DL-026), as dashboard_reader.
+"""Check the guardrails against the real database (DL-026), as the read-only role.
 
 1. Every reference query in nlq/evals/accuracy.yaml returns the same result
    before and after the query checker's rewrite.
@@ -40,7 +40,7 @@ def main() -> int:
     with psycopg.connect(reader_url(), autocommit=True) as conn:
         user = conn.execute("select current_user").fetchone()[0]
         if can_write(conn):
-            print(f"Refusing to run: '{user}' can change the marts. Use the read-only dashboard_reader login.")
+            print(f"Refusing to run: '{user}' can change the marts. Use a read-only login (DL-012).")
             return 2
         print(f"Connected as {user} (read-only).\n")
 
