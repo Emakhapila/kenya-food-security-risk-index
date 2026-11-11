@@ -697,6 +697,25 @@ Why percentiles rather than the existing % anomalies (`rain_1m_anom_pct`): % ano
   - each query takes about 1 s from Nairobi to Neon in us-east-2. Response-time targets must allow for that.
 - **Weak question found:** q31 ("months of 2025 when Turkana's 3-month rainfall was below half of normal") returns no rows on the real data. Any query that returns nothing would match it, so it tests little. It will be replaced before the model's first run, and the change logged here. The test set may still change at this point because no model has seen it.
 
+**Model, prompt and evaluation harness built (2026-11-11); no model has been run yet.**
+
+- **Test set change before any model run:** q31 replaced ("lowest 3-month rainfall in 2025" instead of "below half of normal", which had no rows on the real data). No other question was changed.
+- **Models:**
+  - Claude Haiku 5.5 (`claude-haiku-5-5`): $0.10 per million input tokens, $0.50 per million output.
+  - Claude Sonnet 5.5: $2 and $10.
+  - Prices checked 2026-11-11 on platform.claude.com. A question sends about 4,000 tokens of instructions, cached after the first call, so Sonnet is likely to exceed the $0.01 per question target. Both are evaluated anyway, and the targets decide.
+- **What the model sees** (`nlq/prompt.py`):
+  - rules and definitions;
+  - every mart column, described in `dbt/models/marts/_marts.yml`, now fully documented;
+  - 7 worked examples (`nlq/examples.yaml`), none of them evaluation questions; a test checks this, so the `dev` questions are not used as examples either.
+- **Reply format:** forced as JSON (`status`, `sql`, `reason`) through structured output. The question is passed as `<question>…</question>` and treated as data.
+- **Retry clarified:** the single retry (guardrail 4) covers a checker rejection as well as a database error. Either way the model gets one chance to correct its query.
+- **Prompt freeze:** `prompt_hash()` fingerprints the exact prompt. `python -m nlq.evaluate --split test` refuses to run unless `--frozen` names the current hash, so the prompt provably did not change after seeing test questions. Each run saves the prompt text and results in `reports/nlq_eval/`.
+- **Testing the scorer before trusting it:**
+  - An "oracle" model that answers with the reference SQL scores 100% on dev and test, and the pipeline blocks every attack probe it submits.
+  - Each question was then scored against every other question's reference answer (1,560 wrong pairings). This found a scorer bug: converting a percentage to a share by dividing by 100 before rounding turned 0.28 into 0.00, which "matched" a correlation of −0.0009. Scaling now always multiplies the share side instead. Afterwards only 1 wrong pairing matches: q16's result contains everything q06 asks for, which the rules accept. Regression tests are in `tests/test_nlq_score.py`.
+- **`nlq/check_on_database.py` now also checks** that the documented columns are exactly the columns in the database.
+
 **Revisit if.** Accuracy falls below target after a mart change, an attack gets through in testing or use, or the monthly model cost goes over budget.
 
 ---

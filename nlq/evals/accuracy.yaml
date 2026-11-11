@@ -465,15 +465,21 @@ questions:
   - id: q31
     split: test
     difficulty: hard
-    question: In which months of 2025 was Turkana's 3-month rainfall below half of normal?
+    question: In which month of 2025 was Turkana's 3-month rainfall lowest as a percentage of normal?
     ordered: false
+    note: >
+      Replaced 2026-11-11, before any model run (DL-026): the original ("below
+      half of normal") returned no rows on the real data, so any empty result
+      would have matched it.
     sql: |
       select month
       from marts.fct_climate_county_monthly
       where county_name = 'Turkana'
         and month >= date '2025-01-01'
         and month <  date '2026-01-01'
-        and rain_3m_anom_pct < 50
+        and rain_3m_anom_pct is not null
+      order by rain_3m_anom_pct asc
+      limit 1
 
   - id: q32
     split: test

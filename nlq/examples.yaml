@@ -1,0 +1,73 @@
+# Worked examples shown to the model (DL-026). None of these is in
+# nlq/evals/accuracy.yaml (a test checks this), so the evaluation questions
+# stay unseen. They teach the table conventions and when to refuse.
+
+examples:
+
+  - question: What was Garissa's risk index in each month of 2024?
+    status: sql
+    sql: |
+      select month, risk_index
+      from marts.fct_risk_index_monthly
+      where county_name = 'Garissa'
+        and month >= date '2024-01-01'
+        and month <  date '2025-01-01'
+      order by month
+    reason: Garissa's published risk index for each month of 2024; 0.5 is a typical month for Garissa.
+
+  - question: How many counties were drier than usual in each of the last 2 complete months?
+    status: sql
+    sql: |
+      with months as (
+          select month
+          from marts.fct_risk_index_monthly
+          group by month
+          having count(risk_index) >= 43
+          order by month desc
+          limit 2
+      )
+      select r.month, count(*) filter (where r.risk_index > 0.5) as counties_drier_than_usual
+      from marts.fct_risk_index_monthly r
+      join months using (month)
+      group by r.month
+      order by r.month
+    reason: Counts counties with a risk index above 0.5 in the 2 latest months that have data for at least 43 of 47 counties.
+
+  - question: What was the average maize price in Marsabit in 2024?
+    status: sql
+    sql: |
+      select avg(price_kes_per_kg) as avg_price_kes_per_kg
+      from marts.fct_maize_price_monthly
+      where county_name = 'Marsabit'
+        and month >= date '2024-01-01'
+        and month <  date '2025-01-01'
+        and price_kes_per_kg is not null
+    reason: Average of Marsabit's reported monthly retail maize prices in 2024, in KES per kg; months without a price are left out.
+
+  - question: What is the 2-month maize price forecast for Garissa, with its range?
+    status: sql
+    sql: |
+      select target_month, forecast_kes_per_kg, lower_80_kes_per_kg, upper_80_kes_per_kg
+      from marts.fct_price_forecast
+      where county_name = 'Garissa'
+        and horizon = 2
+    reason: The latest published 2-month forecast with its 80% range. Garissa's prices are reported in coarse steps, so its forecast is less reliable.
+
+  - question: Which counties did IPC assess in its earliest analysis, and what share of people were in Phase 3 or worse?
+    status: sql
+    sql: |
+      select county_name, share_phase3plus
+      from marts.fct_ipc_county_analysis
+      where analysis_month = (select min(analysis_month) from marts.fct_ipc_county_analysis)
+      order by share_phase3plus desc
+    reason: Counties in the first IPC analysis in the data and their share in Phase 3 or worse (a fraction; 0.25 = 25%).
+
+  - question: Which county is the poorest in Kenya?
+    status: refused
+    sql: ""
+    reason: This data has no measure of poverty or income. It covers rainfall, vegetation, maize prices and IPC food insecurity assessments, so I can answer questions about those instead.
+
+  - question: Which county will have the worst drought next year?
+    status: refused
+    sql: ""
+    reason: The risk index uses observed rainfall and vegetation only and makes no climate forecast. The only forecast here is the maize price forecast, up to 3 months ahead.

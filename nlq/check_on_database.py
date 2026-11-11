@@ -1,5 +1,7 @@
 """Check the guardrails against the real database (DL-026), as the read-only role.
 
+0. The columns documented in dbt/models/marts/_marts.yml (what the model is
+   told) are exactly the columns in the database.
 1. Every reference query in nlq/evals/accuracy.yaml returns the same result
    before and after the query checker's rewrite.
 2. Every attack probe in nlq/evals/attacks.yaml is stopped by the database
@@ -20,7 +22,8 @@ import psycopg
 import yaml
 
 from nlq.db import can_write, reader_url, run_readonly
-from nlq.guard import check
+from nlq.guard import ALLOWED_TABLES, SCHEMA, check
+from nlq.prompt import MARTS_YML
 
 EVALS = Path(__file__).resolve().parent / "evals"
 
@@ -43,6 +46,20 @@ def main() -> int:
             print(f"Refusing to run: '{user}' can change the marts. Use a read-only login (DL-012).")
             return 2
         print(f"Connected as {user} (read-only).\n")
+
+        print("0. Documented columns (what the model is told) = columns in the database?")
+        documented = {m["name"]: {c["name"] for c in m.get("columns", [])}
+                      for m in yaml.safe_load(MARTS_YML.read_text(encoding="utf-8"))["models"]}
+        for table in sorted(ALLOWED_TABLES):
+            actual = {r[0] for r in conn.execute(
+                "select column_name from information_schema.columns "
+                "where table_schema = %s and table_name = %s", (SCHEMA, table)).fetchall()}
+            missing, extra = actual - documented.get(table, set()), documented.get(table, set()) - actual
+            ok = actual and not missing and not extra
+            failures += not ok
+            detail = "" if ok else f"  undocumented: {sorted(missing)}  not in database: {sorted(extra)}"
+            print(f"   {table:<28} {'ok  ' if ok else 'FAIL'}{detail}")
+        print()
 
         print("1. Reference queries: same result after the checker's rewrite?")
         for q in accuracy:

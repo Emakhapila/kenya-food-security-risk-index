@@ -1,16 +1,33 @@
 version: 2
 
+# Every column is described: these descriptions are also what the "Ask the data"
+# model sees (DL-026), so keep them accurate and plain.
+
 models:
   - name: fct_maize_price_monthly
     description: >
-      Retail white maize price (KES/kg) per county per month, with every month
-      present (missing = NULL). Flags long flat runs (possible carried-forward
-      values) and low-resolution series (DL-016). Input to the price forecast.
+      Retail white maize price (KES/kg) per county per month, from FEWS NET via
+      FAO GIEWS FPMA, for the 16 counties with a FEWS NET market. Every month in
+      the series range has a row; a month with no price has NULL. Flags long flat
+      runs (possible carried-forward values) and low-resolution series (DL-016).
+      Input to the price forecast.
     columns:
       - name: county_pcode
+        description: County code, KE001 to KE047.
         data_tests: [not_null]
+      - name: county_name
+        description: County name, e.g. 'Garissa', 'Marsabit'.
       - name: month
+        description: First day of the month (date).
         data_tests: [not_null]
+      - name: price_kes_per_kg
+        description: Retail white maize price in Kenyan shillings per kg; NULL if not reported that month.
+      - name: log_price
+        description: Natural log of price_kes_per_kg.
+      - name: is_observed
+        description: True if a price was reported that month.
+      - name: flat_run_length
+        description: Length in months of the run of identical consecutive prices this month belongs to (0 if no price).
       - name: is_flat_run
         description: True within runs of identical consecutive prices of at least var('flat_run_min_months').
       - name: is_low_resolution
@@ -18,58 +35,115 @@ models:
 
   - name: fct_climate_county_monthly
     description: >
-      Monthly rainfall and NDVI per county with anomalies as % of the long-term
-      average (100 = normal). County values come from the county-level unit where
-      available, otherwise a pixel-weighted mean of sub-county units (DL-017).
+      Monthly rainfall and vegetation (NDVI) per county for all 47 counties, with
+      anomalies as % of the long-term average (100 = normal). County values come
+      from the county-level unit where available, otherwise a pixel-weighted mean
+      of sub-county units (DL-017).
     columns:
       - name: county_pcode
+        description: County code, KE001 to KE047.
         data_tests: [not_null]
+      - name: county_name
+        description: County name.
       - name: month
+        description: First day of the month (date).
         data_tests: [not_null]
       - name: climate_source_level
+        description: "'adm1' = county-level data; 'adm2_proxy' = estimated from a sample of sub-county units."
         data_tests:
           - accepted_values:
               arguments:
                 values: ["adm1", "adm2_proxy"]
+      - name: rain_units_used
+        description: Number of spatial units averaged for this county.
+      - name: rain_mm
+        description: Rainfall in the month, mm.
+      - name: rain_avg_mm
+        description: Long-term average rainfall for the same month, mm.
+      - name: rain_1m_anom_pct
+        description: Month's rainfall as % of its long-term average (100 = normal).
+      - name: rain_3m_anom_pct
+        description: Rainfall over this month and the 2 before it as % of the long-term average (100 = normal); NULL unless all 3 months exist.
+      - name: ndvi
+        description: Vegetation greenness (NDVI), monthly mean.
+      - name: ndvi_avg
+        description: Long-term average NDVI for the same month.
+      - name: ndvi_anom_pct
+        description: NDVI as % of its long-term average (100 = normal).
+      - name: rain_month_complete
+        description: True if all 3 dekads (10-day periods) of rainfall are in.
+      - name: ndvi_month_complete
+        description: True if all 3 dekads of NDVI are in.
+      - name: rain_is_provisional
+        description: True if any rainfall dekad is a preliminary estimate.
 
   - name: fct_ipc_county_analysis
     description: >
-      Validation target for the risk index: share of population in IPC Phase 3+
-      per county per analysis, current period only, refugee areas excluded
-      (DL-018). Sub-county areas are summed unless a county-level row exists.
-      Partial-county areas are flagged by comparing IPC's population with the
-      2019 census.
+      IPC acute food insecurity per county per analysis: the share of the
+      population in IPC Phase 3 (Crisis) or worse, current period only, refugee
+      areas excluded (DL-018). IPC assesses mainly arid and semi-arid counties;
+      counties not in this table were not assessed. Partial-county areas are
+      flagged by comparing IPC's population with the 2019 census.
     columns:
       - name: county_pcode
+        description: County code, KE001 to KE047.
         data_tests: [not_null]
+      - name: county_name
+        description: County name.
       - name: analysis_month
+        description: Month the IPC analysis was published (first day of month).
         data_tests: [not_null]
-      - name: share_phase3plus
-        description: Phase 3+ population / total analysed population, from numbers not rounded percentages.
-        data_tests: [not_null]
+      - name: valid_from
+        description: First day of the period the analysis describes.
+      - name: valid_to
+        description: Last day of the period the analysis describes.
       - name: ipc_area_level
+        description: "'county' = a county-level IPC area; 'subcounty_sum' = sub-county areas added up."
         data_tests:
           - accepted_values:
               arguments:
                 values: ["county", "subcounty_sum"]
+      - name: ipc_areas_used
+        description: Number of IPC areas combined for this county.
+      - name: ipc_areas
+        description: Names of the IPC areas combined, separated by '; '.
+      - name: pop_total
+        description: Population IPC analysed in the county.
+      - name: pop_phase3plus
+        description: People in IPC Phase 3 or worse.
+      - name: share_phase3plus
+        description: Phase 3+ population / total analysed population, as a fraction from 0 to 1 (0.25 = 25%).
+        data_tests: [not_null]
       - name: ipc_coverage_ratio
         description: IPC analysed population / 2019 census population.
       - name: is_partial_county
-        description: True when ipc_coverage_ratio < var('ipc_partial_coverage_max'); validate separately.
+        description: True when ipc_coverage_ratio < var('ipc_partial_coverage_max'), i.e. IPC covered only part of the county; validate separately.
 
   - name: fct_risk_index_monthly
     description: >
-      Monthly county risk index (DL-022): how unusual rainfall, vegetation and
-      maize prices are compared with the county's own earlier history, as
-      percentiles oriented so 1 = high risk. Measures shocks, not chronic food
-      insecurity. Variant columns require all their components. risk_index is
-      the published value: rainfall + vegetation (DL-023), rainfall alone before
-      NDVI has 10 years of history; price is kept for analysis only.
+      Monthly county risk index (DL-022) for all 47 counties: how unusual rainfall
+      and vegetation are compared with the county's OWN earlier history, as
+      percentiles oriented so 1 = driest/brownest on record, 0.5 = typical,
+      0 = wettest/greenest. Measures shocks, not chronic food insecurity, so it
+      cannot rank counties by how food insecure they are. Variant columns require
+      all their components. risk_index is the published value: rainfall +
+      vegetation (DL-023), rainfall alone before NDVI has 10 years of history;
+      price is kept for analysis only. The newest month is often incomplete.
     columns:
       - name: county_pcode
+        description: County code, KE001 to KE047.
         data_tests: [not_null]
+      - name: county_name
+        description: County name.
       - name: month
+        description: First day of the month (date).
         data_tests: [not_null]
+      - name: climate_source_level
+        description: "'adm1' = county-level climate data; 'adm2_proxy' = estimated from sub-county units."
+      - name: rain_3m_mm
+        description: Rainfall over this month and the 2 before it, mm.
+      - name: price_dev
+        description: log price minus the mean log price of the same month in the 3 previous years.
       - name: risk_rain
         description: 1 - percentile of the 3-month rainfall total vs the same calendar window in earlier years.
         data_tests: [not_null]
@@ -77,41 +151,118 @@ models:
         description: 1 - percentile of NDVI vs the same calendar month in earlier years.
       - name: risk_price
         description: Percentile of price_dev vs all earlier months (16 FEWS NET counties).
-      - name: price_dev
-        description: log price minus the mean log price of the same month in the 3 previous years.
+      - name: index_v1_rain
+        description: Validation variant, rainfall only.
+      - name: index_v2_climate
+        description: Validation variant, mean of risk_rain and risk_ndvi (the variant published as risk_index).
+      - name: index_v3_climate_price
+        description: Validation variant, mean of risk_rain, risk_ndvi and risk_price.
+      - name: risk_index
+        description: THE published risk index, 0 to 1. Above 0.5 = drier/browner than usual; 0.8 or more = strongly unusual.
       - name: index_components
+        description: "'rain+ndvi' or 'rain' (before NDVI history exists)."
         data_tests:
           - accepted_values:
               arguments:
                 values: ["rain", "rain+ndvi"]
+      - name: rain_history_years
+        description: Earlier years the rainfall percentile is based on.
+      - name: ndvi_history_years
+        description: Earlier years the NDVI percentile is based on.
+      - name: price_history_months
+        description: Earlier months the price percentile is based on.
 
   - name: fct_risk_index_ipc
     description: >
       Risk index aligned to each IPC county-analysis for validation (DL-022).
       *_pre3 is the primary alignment (mean over the 3 months before the analysis,
       at least 2 months); *_at_analysis and *_validity are sensitivity checks only.
+      The validated result is a within-county Spearman correlation of
+      index_v2_climate_pre3 with share_phase3plus (rho = 0.52, DL-023).
     columns:
       - name: county_pcode
+        description: County code.
         data_tests: [not_null]
+      - name: county_name
+        description: County name.
       - name: analysis_month
+        description: Month the IPC analysis was published.
         data_tests: [not_null]
+      - name: share_phase3plus
+        description: Share of the population in IPC Phase 3 or worse, 0 to 1.
+      - name: is_partial_county
+        description: True if IPC covered only part of the county.
+      - name: ipc_area_level
+        description: "'county' or 'subcounty_sum'."
+      - name: climate_source_level
+        description: "'adm1' or 'adm2_proxy'."
+      - name: index_v1_rain_pre3
+        description: Rainfall-only index, mean over the 3 months before the analysis.
+      - name: index_v1_rain_pre3_months
+        description: Months with a value in that window.
+      - name: index_v1_rain_at_analysis
+        description: Rainfall-only index in the analysis month.
+      - name: index_v1_rain_validity
+        description: Rainfall-only index, mean over the analysis validity period.
+      - name: index_v2_climate_pre3
+        description: Published (rain + NDVI) index, mean over the 3 months before the analysis. The primary measure.
+      - name: index_v2_climate_pre3_months
+        description: Months with a value in that window.
+      - name: index_v2_climate_at_analysis
+        description: Published index in the analysis month.
+      - name: index_v2_climate_validity
+        description: Published index, mean over the validity period.
+      - name: index_v3_climate_price_pre3
+        description: Rain + NDVI + price index, mean over the 3 months before the analysis.
+      - name: index_v3_climate_price_pre3_months
+        description: Months with a value in that window.
+      - name: index_v3_climate_price_at_analysis
+        description: Rain + NDVI + price index in the analysis month.
+      - name: index_v3_climate_price_validity
+        description: Rain + NDVI + price index, mean over the validity period.
 
   - name: fct_price_forecast
     description: >
-      Latest published retail maize price forecast (DL-025): naive at 1 month,
+      Latest published retail maize price forecast (DL-025), one row per county
+      and horizon, for the 16 FEWS NET counties: naive (latest price) at 1 month,
       LightGBM with climate features at 2-3 months (DL-021), with 80% ranges from
-      the models' own recent errors. One row per county and horizon.
+      the models' own recent errors.
     columns:
       - name: county_pcode
+        description: County code.
         data_tests: [not_null]
+      - name: county_name
+        description: County name.
+      - name: origin_month
+        description: Latest month of observed prices the forecast starts from.
+      - name: target_month
+        description: Month being forecast.
       - name: horizon
+        description: Months ahead (1, 2 or 3).
         data_tests:
           - accepted_values:
               arguments:
                 values: [1, 2, 3]
                 quote: false
       - name: model
+        description: "'naive' (latest price) or 'lightgbm_climate'."
         data_tests:
           - accepted_values:
               arguments:
                 values: ["naive", "lightgbm_climate"]
+      - name: last_price_kes_per_kg
+        description: Observed price in origin_month, KES/kg.
+      - name: forecast_kes_per_kg
+        description: Forecast price, KES/kg.
+      - name: lower_80_kes_per_kg
+        description: Lower end of the 80% range, KES/kg.
+      - name: upper_80_kes_per_kg
+        description: Upper end of the 80% range, KES/kg.
+      - name: change_pct
+        description: Forecast change from the latest price, in percent (5.0 = +5%).
+      - name: interval_errors_n
+        description: Number of past forecast errors the 80% range is based on.
+      - name: is_low_resolution
+        description: True for Garissa, whose prices are reported in coarse steps.
+      - name: run_at
+        description: When this forecast run was made.
