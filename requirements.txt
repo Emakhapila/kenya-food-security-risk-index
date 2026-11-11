@@ -1,6 +1,7 @@
 agate==1.9.1
 altair==6.3.0
 annotated-types==0.8.0
+anthropic==2.8.0
 anyio==4.15.1
 argon2-cffi-bindings==26.1.0
 argon2-cffi==25.1.0
