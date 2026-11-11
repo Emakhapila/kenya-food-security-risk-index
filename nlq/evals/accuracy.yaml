@@ -21,6 +21,10 @@
 #   "3-month forecast" = fct_price_forecast with horizon = 3
 #   "pre-analysis index" = index_v2_climate_pre3 (the published rain + NDVI
 #       index, averaged over the 3 months before an IPC analysis)
+#   ties: "top N", "N highest/lowest", "the highest/lowest" include every row
+#       tied at the cut-off (FETCH FIRST n ROWS WITH TIES, or rank()); sorted
+#       results break ties by county_name. Added 2026-11-11 (DL-026): the risk
+#       index takes a limited set of values, so ties at a cut-off are common.
 
 questions:
 
@@ -53,7 +57,7 @@ questions:
     split: test
     difficulty: easy
     question: Which 5 counties had the highest risk index in the latest complete month?
-    ordered: true
+    ordered: false
     sql: |
       with latest as (
           select max(month) as month
@@ -64,7 +68,7 @@ questions:
       from marts.fct_risk_index_monthly r
       join latest l on r.month = l.month
       order by r.risk_index desc
-      limit 5
+      fetch first 5 rows with ties
 
   - id: q04
     split: test
@@ -118,7 +122,7 @@ questions:
       join latest l on p.month = l.month
       where p.price_kes_per_kg is not null
       order by p.price_kes_per_kg desc
-      limit 1
+      fetch first 1 rows with ties
 
   - id: q08
     split: test
@@ -223,7 +227,7 @@ questions:
         on b.county_pcode = a.county_pcode
        and b.month = (l.month - interval '12 months')::date
       order by a.risk_index - b.risk_index desc
-      limit 1
+      fetch first 1 rows with ties
 
   - id: q15
     split: test
@@ -249,7 +253,7 @@ questions:
              lower_80_kes_per_kg, upper_80_kes_per_kg
       from marts.fct_price_forecast
       where horizon = 3
-      order by change_pct desc
+      order by change_pct desc, county_name
 
   - id: q17
     split: test
@@ -290,7 +294,7 @@ questions:
     split: dev
     difficulty: medium
     question: In the most recent IPC analysis, which 5 counties had the highest share of people in Phase 3 or worse?
-    ordered: true
+    ordered: false
     sql: |
       with latest as (
           select max(analysis_month) as analysis_month
@@ -300,7 +304,7 @@ questions:
       from marts.fct_ipc_county_analysis i
       join latest l on i.analysis_month = l.analysis_month
       order by i.share_phase3plus desc
-      limit 5
+      fetch first 5 rows with ties
 
   - id: q21
     split: test
@@ -364,7 +368,7 @@ questions:
     split: test
     difficulty: hard
     question: Which 5 counties have been drier than usual for the most months in a row, up to and including the latest complete month?
-    ordered: true
+    ordered: false
     sql: |
       with latest as (
           select max(month) as month
@@ -387,7 +391,7 @@ questions:
       where s.month > coalesce(w.month, date '1900-01-01')
       group by s.county_name
       order by count(*) desc
-      limit 5
+      fetch first 5 rows with ties
 
   - id: q27
     split: dev
@@ -407,7 +411,7 @@ questions:
       from marts.fct_risk_index_monthly r
       join months using (month)
       group by r.county_name
-      order by avg(r.risk_index) desc
+      order by avg(r.risk_index) desc, r.county_name
 
   - id: q28
     split: test
@@ -479,7 +483,7 @@ questions:
         and month <  date '2026-01-01'
         and rain_3m_anom_pct is not null
       order by rain_3m_anom_pct asc
-      limit 1
+      fetch first 1 rows with ties
 
   - id: q32
     split: test
@@ -581,7 +585,7 @@ questions:
       from marts.fct_risk_index_monthly r
       join latest l on r.month = l.month
       order by r.risk_index asc
-      limit 1
+      fetch first 1 rows with ties
 
   - id: q39
     split: test

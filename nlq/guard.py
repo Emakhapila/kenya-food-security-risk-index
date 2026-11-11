@@ -168,8 +168,24 @@ def check(sql: str) -> GuardResult:
         if not col.table and _identifier(col.args.get("this")) in SERVER_KEYWORDS:
             return _reject(f"{col.name} is not allowed.")
 
-    # Row limit on the outermost query.
+    # Row limit on the outermost query. FETCH FIRST n ROWS [ONLY | WITH TIES] is
+    # allowed; WITH TIES can return more than n rows, so such a query is wrapped
+    # in an outer LIMIT to keep the cap.
     limit = tree.args.get("limit")
+    if isinstance(limit, exp.Fetch):
+        count = limit.args.get("count")
+        options = limit.args.get("limit_options")
+        if options is not None and options.args.get("percent"):
+            return _reject("FETCH ... PERCENT is not allowed.")
+        if not (isinstance(count, exp.Literal) and count.is_int):
+            return _reject("FETCH FIRST needs a whole number of rows.")
+        if int(count.this) > MAX_ROWS:
+            limit.set("count", exp.Literal.number(MAX_ROWS))
+        if options is not None and options.args.get("with_ties"):
+            capped = exp.select("*").from_(tree.subquery("capped")).limit(MAX_ROWS)
+            return GuardResult(ok=True, sql=capped.sql(dialect="postgres"))
+        return GuardResult(ok=True, sql=tree.sql(dialect="postgres"))
+
     current = None
     if limit is not None:
         value = limit.args.get("expression")

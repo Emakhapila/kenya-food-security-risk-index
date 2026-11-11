@@ -62,6 +62,18 @@ examples:
       order by share_phase3plus desc
     reason: Counties in the first IPC analysis in the data and their share in Phase 3 or worse (a fraction; 0.25 = 25%).
 
+  - question: Which 3 counties had the lowest maize prices in the latest month with any price?
+    status: sql
+    sql: |
+      select county_name, price_kes_per_kg
+      from marts.fct_maize_price_monthly
+      where month = (select max(month) from marts.fct_maize_price_monthly
+                     where price_kes_per_kg is not null)
+        and price_kes_per_kg is not null
+      order by price_kes_per_kg asc, county_name
+      fetch first 3 rows with ties
+    reason: The 3 lowest retail maize prices that month, in KES per kg, including any county tied with the third.
+
   - question: Which county is the poorest in Kenya?
     status: refused
     sql: ""
