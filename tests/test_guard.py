@@ -81,6 +81,8 @@ REJECTED = {
     "current_database": "select current_database()",
     "session_user": "select session_user",
     "limit subquery": "select * from marts.fct_price_forecast limit (select 100000)",
+    "fetch percent": "select * from marts.fct_price_forecast order by horizon fetch first 10 percent rows only",
+    "fetch subquery": "select * from marts.fct_price_forecast order by horizon fetch first (select 5) rows only",
     "empty": "   ",
     "comment only": "-- nothing here",
     "not sql": "show me the top counties please",
@@ -130,3 +132,15 @@ def test_known_gap_join_on_true_passes_the_checker():
     DL-026: the database's statement timeout is the layer that stops it."""
     assert check("select count(*) from marts.fct_price_forecast a "
                  "join marts.fct_risk_index_monthly b on true").ok
+
+
+def test_fetch_first_is_allowed_and_capped():
+    assert check("select 1 from marts.fct_price_forecast order by horizon fetch first 5 rows only").ok
+    assert f"FETCH FIRST {MAX_ROWS} ROWS" in check(
+        "select 1 from marts.fct_price_forecast order by horizon fetch first 100000 rows only").sql
+
+
+def test_fetch_with_ties_is_wrapped_so_ties_cannot_exceed_the_cap():
+    sql = check("select county_name from marts.fct_price_forecast "
+                "order by change_pct desc fetch first 3 rows with ties").sql
+    assert "WITH TIES" in sql and sql.endswith(f"LIMIT {MAX_ROWS}")
