@@ -737,6 +737,37 @@ What the misses showed, and the changes made before freezing the prompt:
 - **New worked example:** a `WITH TIES` question about maize prices, not from the evaluation sets.
 - **New prompt hash:** `269dd0f83b2b`. Next: re-run dev on both models; if nothing else needs changing, freeze this hash and run the test set.
 
+**Test set result (2026-11-11, prompt `269dd0f83b2b` frozen, 30 test questions × 3 runs, real database). This is the pre-registered result.**
+
+| Model | Test accuracy, mean (range) | Attacks | Wrong refusals | Median cost per question | 90th percentile time |
+|---|---|---|---|---|---|
+| Claude Haiku 5.5 | **85.6%** (83.3–86.7%) | **15/15 in all 3 runs** | 0% | $0.0003 | 6.0 s |
+| Claude Sonnet 5.5 | **91.1%** (90.0–93.3%) | not run | 0% | $0.0027 | 6.8 s |
+
+- **Every target is met by both models.** Under the rule "the cheapest model that meets every target", **Haiku is chosen, and the feature is published** (≥ 85%), not labelled experimental.
+- **The margin is thin.** Haiku's mean clears 85% by 0.6 points, and one of its three runs scored 83.3%.
+- **Total API cost of the test runs:** $0.38.
+
+**Every miss, diagnosed after scoring** (from the saved SQL in `reports/nlq_eval/`; the scores above are not changed by this):
+
+| Question | Misses (Haiku / Sonnet, of 3 each) | Cause |
+|---|---|---|
+| q03, q26 | 6 / 5 | **Prompt bug (mine).** The prompt said both "include ties with `FETCH FIRST n ROWS WITH TIES`" and "break ties by `county_name`". The models put both in one `ORDER BY`. `WITH TIES` compares the whole `ORDER BY`, so the name tie-break removed the ties: 5 rows instead of 7. The one Sonnet run that used `rank()` passed. |
+| q28 | 3 / 3 | **Scoring artifact.** The query is correct, but the percentage change is rounded to 1 decimal, and the pre-registered rule compares at 2 decimals. |
+| q37 | 2 / 0 | **Scoring limitation.** The right two counts, but laid out as one row with two columns instead of two rows. The scorer matches columns, not reshaped tables. |
+| q10 | 2 / 0 | **Genuine model error.** Adding `ipc_coverage_ratio` to `SELECT DISTINCT` returned one row per county *and* ratio, so counties repeated. |
+
+- **Haiku:** of 13 misses in 90 answers, 2 were genuine model errors, 6 the prompt bug and 5 scoring limits.
+- **Sonnet:** none of its 8 misses were model errors.
+- **The scorer is not changed after the fact.** Its rounding and layout limits are recorded here as known limits, to address in the next evaluation design.
+
+**Fix and re-run (2026-11-12).**
+
+- **What changed:** only the tie rule in the prompt. Ties are kept with `rank()`, or with `WITH TIES` ordered by the value only; any `county_name` tie-break goes in an outer sort. The `WITH TIES` worked example was corrected the same way, and a test now checks that examples never put a tie-break in a `WITH TIES` ordering.
+- **What did not change:** the scorer and the questions.
+- **New prompt hash:** `249f7342fe46`.
+- **This re-run is not a fresh, unseen estimate.** The fix was found on the test set, so its test score is reported as a re-run after a fix, labelled in the results files. A clean estimate of the fixed prompt needs new held-out questions, which is a v2 task. The live page uses the fixed prompt.
+
 **Revisit if.** Accuracy falls below target after a mart change, an attack gets through in testing or use, or the monthly model cost goes over budget.
 
 ---

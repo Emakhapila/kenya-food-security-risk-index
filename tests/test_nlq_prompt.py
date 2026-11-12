@@ -45,3 +45,13 @@ def test_example_queries_pass_the_checker():
 def test_prompt_hash_is_stable_and_short():
     assert prompt_hash() == prompt_hash()
     assert re.fullmatch(r"[0-9a-f]{12}", prompt_hash())
+
+
+def test_with_ties_examples_order_by_the_value_only():
+    # WITH TIES compares the whole ORDER BY: a county_name tie-break there removes the ties
+    # (the bug found on the test set, DL-026).
+    for e in EXAMPLES:
+        sql = " ".join(e["sql"].lower().split())
+        if "with ties" in sql:
+            order_by = sql.rsplit("order by", 1)[1].split("fetch", 1)[0]
+            assert "county_name" not in order_by, e["question"]
