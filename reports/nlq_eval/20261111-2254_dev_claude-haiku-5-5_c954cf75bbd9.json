@@ -1,0 +1,29 @@
+{
+  "date": "20261111-2254",
+  "split": "dev",
+  "model": "claude-haiku-5-5",
+  "effort": null,
+  "prompt_hash": "c954cf75bbd9",
+  "runs": 1,
+  "questions": 10,
+  "score_per_run": [
+    0.8
+  ],
+  "score_mean": 0.8,
+  "score_range": [
+    0.8,
+    0.8
+  ],
+  "wrong_refusal_rate": 0.1,
+  "model_wrote_rejected_sql": 0,
+  "cost_median_usd": 0.00033306000000000004,
+  "cost_total_usd": 0.0037605650000000004,
+  "latency_p90_s": 5.5,
+  "targets": {
+    "accuracy_publish": 0.85,
+    "accuracy_experimental": 0.7,
+    "wrong_refusals_max": 0.05,
+    "cost_median_max_usd": 0.01,
+    "latency_p90_max_s": 10.0
+  }
+}
