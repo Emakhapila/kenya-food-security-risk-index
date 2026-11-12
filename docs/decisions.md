@@ -790,7 +790,8 @@ What the misses showed, and the changes made before freezing the prompt:
 
 - **Limits (guardrail 5, `dashboard/ask_limits.py`):**
   - 300 characters per question;
-  - 10 questions per visitor session;
+  - 5 questions per visitor session. This is a soft limit, since a reload starts a new session;
+  - the owner: a private key (`ASK_OWNER_KEY` secret), opened once as `?key=…` and then removed from the address bar, gives that session 50 questions outside the daily cap, so the page can always be demonstrated;
   - 300 questions a day across all visitors, about $0.10 a day at the tested median cost;
   - identical questions are answered from a 6-hour cache without a new model call;
   - the Anthropic account's $10 monthly spend limit is the hard backstop.

@@ -39,6 +39,17 @@ EXAMPLES = [
 ]
 
 
+def secret(name: str) -> str | None:
+    """An environment variable, else a Streamlit secret, else None."""
+    value = os.environ.get(name)
+    if value:
+        return value
+    try:
+        return st.secrets[name]
+    except Exception:
+        return None
+
+
 @st.cache_resource
 def daily_cap() -> ask_limits.DailyCap:
     return ask_limits.DailyCap()
@@ -52,12 +63,9 @@ def model_caller() -> ModelCaller:
         caller.use_json_schema = False
         return caller
     import anthropic
-    key = os.environ.get("ANTHROPIC_API_KEY")
+    key = secret("ANTHROPIC_API_KEY")
     if not key:
-        try:
-            key = st.secrets["ANTHROPIC_API_KEY"]
-        except Exception:
-            raise RuntimeError("ANTHROPIC_API_KEY is not set") from None
+        raise RuntimeError("ANTHROPIC_API_KEY is not set")
     return ModelCaller(anthropic.Anthropic(api_key=key), MODEL)
 
 
@@ -125,6 +133,12 @@ st.caption(
 
 if "asked" not in st.session_state:
     st.session_state.asked = 0
+if "owner" not in st.session_state:
+    st.session_state.owner = False
+if "key" in st.query_params:   # owner link: check once, then remove the key from the address bar
+    st.session_state.owner = ask_limits.is_owner(st.query_params["key"], secret("ASK_OWNER_KEY"))
+    del st.query_params["key"]
+limit = ask_limits.session_limit(st.session_state.owner)
 if "question" not in st.session_state:
     st.session_state.question = ""
 
@@ -141,10 +155,10 @@ with st.form("ask"):
 
 if submitted and question.strip():
     q = " ".join(question.split())
-    if not ask_limits.session_allows(st.session_state.asked):
-        st.warning(f"You've reached the limit of {ask_limits.PER_SESSION} questions for this visit. "
+    if not ask_limits.session_allows(st.session_state.asked, limit):
+        st.warning(f"You've reached the limit of {limit} questions for this visit. "
                    "Please come back later.")
-    elif not daily_cap().try_take():
+    elif not st.session_state.owner and not daily_cap().try_take():
         st.warning("Today's question limit for this free demo has been reached. Please try again tomorrow.")
     else:
         try:
@@ -157,6 +171,10 @@ if submitted and question.strip():
         except Exception:
             traceback.print_exc()
             st.error("Something went wrong answering that question. Please try again later.")
+
+left = max(0, limit - st.session_state.asked)
+st.caption(f"{left} of {limit} questions left this visit."
+           + (" (owner)" if st.session_state.owner else ""))
 
 st.divider()
 st.caption(

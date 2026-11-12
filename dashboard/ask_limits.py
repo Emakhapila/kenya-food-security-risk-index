@@ -1,7 +1,12 @@
 """Usage limits for the public "Ask the data" page (DL-026, guardrail 5).
 
-- per visitor: at most PER_SESSION questions per browser session
-- for everyone: at most PER_DAY questions per UTC day, shared by all visitors
+- per visitor: at most PER_SESSION questions per browser session. This is a
+  soft limit: reloading the page starts a new session.
+- for everyone: at most PER_DAY questions per UTC day, shared by all visitors.
+  This is the real cost control.
+- the owner: opening the page once with ?key=<ASK_OWNER_KEY> gives that session
+  OWNER_PER_SESSION questions, not counted against the daily cap, so the page can
+  always be demonstrated.
 
 The daily counter lives in the app's memory, so it resets if the app restarts.
 The Anthropic account's monthly spend limit is the hard backstop.
@@ -9,9 +14,11 @@ The Anthropic account's monthly spend limit is the hard backstop.
 from __future__ import annotations
 
 import datetime as dt
+import hmac
 import threading
 
-PER_SESSION = 10
+PER_SESSION = 5
+OWNER_PER_SESSION = 50
 PER_DAY = 300   # ~$0.10/day on Claude Haiku 5.5 at the tested median cost
 
 
@@ -44,3 +51,14 @@ class DailyCap:
 
 def session_allows(asked: int, limit: int = PER_SESSION) -> bool:
     return asked < limit
+
+
+def is_owner(supplied: str | None, expected: str | None) -> bool:
+    """True only if an owner key is configured and the supplied one matches it."""
+    if not expected or not supplied:
+        return False
+    return hmac.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8"))
+
+
+def session_limit(owner: bool) -> int:
+    return OWNER_PER_SESSION if owner else PER_SESSION
