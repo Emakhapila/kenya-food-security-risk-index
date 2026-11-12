@@ -768,6 +768,39 @@ What the misses showed, and the changes made before freezing the prompt:
 - **New prompt hash:** `249f7342fe46`.
 - **This re-run is not a fresh, unseen estimate.** The fix was found on the test set, so its test score is reported as a re-run after a fix, labelled in the results files. A clean estimate of the fixed prompt needs new held-out questions, which is a v2 task. The live page uses the fixed prompt.
 
+**Re-run after the tie fix (2026-11-12, prompt `249f7342fe46`, Claude Haiku 5.5, labelled "rerun after tie fix").**
+
+| Set | Result |
+|---|---|
+| Dev | 10/10 |
+| Attacks | 15/15 |
+| Test (3 runs) | **88.9%** (86.7–90.0%), wrong refusals 0%, median $0.0003 per question, 90th percentile 5.8 s |
+
+- **The diagnosis held for the tie bug:**
+  - q03 went from 3 misses to 0;
+  - q26 from 3 to 1. That one was blocked: the model's query was rejected twice by the join rule.
+- **The remaining misses are the ones diagnosed above:**
+  - q28 (rounding, 3/3);
+  - q37 (layout, 3/3);
+  - q10 (the genuine `SELECT DISTINCT` error, 3/3).
+- **The prediction was wrong by 3 points.** I had predicted about 92%. The difference is run-to-run variation: q10 and q37 each missed once more than in the frozen run.
+- **This is not an unseen estimate**, for the reason given above.
+
+**Published (v1.1).** "Ask the data" is a second dashboard page (`dashboard/ask_page.py`) using Claude Haiku 5.5 and prompt `249f7342fe46`. It shows the answer table, the model's reason and the exact SQL that ran.
+
+- **Limits (guardrail 5, `dashboard/ask_limits.py`):**
+  - 300 characters per question;
+  - 10 questions per visitor session;
+  - 300 questions a day across all visitors, about $0.10 a day at the tested median cost;
+  - identical questions are answered from a 6-hour cache without a new model call;
+  - the Anthropic account's $10 monthly spend limit is the hard backstop.
+- **The read-only check:** the page refuses to answer if its database login can write.
+- **What the page tells visitors:** that it is tested at 86% (89% after the fix) and can be wrong; that they should check the SQL for anything that matters; and that their question goes to Anthropic's API but the result rows do not.
+- **Logging:** each question is logged to the app logs with its status and cost.
+- **Next evaluation (v2):**
+  - new held-out questions, for a clean estimate of the fixed prompt;
+  - a scorer that compares percentages at the precision the answer reports, and recognises a table reshaped from rows to columns.
+
 **Revisit if.** Accuracy falls below target after a mart change, an attack gets through in testing or use, or the monthly model cost goes over budget.
 
 ---

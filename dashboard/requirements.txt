@@ -5,3 +5,7 @@ altair==6.3.0
 pandas==3.0.6
 psycopg[binary]==3.3.6
 python-dotenv==1.2.3
+# Ask the data (DL-026)
+anthropic==2.8.0
+sqlglot==30.19.0
+PyYAML==6.0.3
