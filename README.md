@@ -47,6 +47,24 @@ Forecasting retail maize prices in 16 mostly arid and semi-arid counties, with a
 
 Full numbers and reasoning: DL-020 to DL-023 in the [decision log](docs/decisions.md). Summary metrics are in [`reports/index_validation/`](reports/index_validation/) and [`reports/backtest/`](reports/backtest/).
 
+### 3. "Ask the data": plain-English questions, answered with checked SQL (v1.1)
+
+A [dashboard page](https://kenya-food-security-index.streamlit.app/ask) where anyone can ask a question in plain English. Claude Haiku 5.5 writes one SQL query, a query checker and a read-only database role decide whether it can run, and the visitor sees the answer **and the exact SQL**. The test was written down before any code (DL-026):
+
+| Measure | Target | Result (30 held-back questions × 3 runs) |
+|---|---|---|
+| Correct answers | ≥ 85% | **85.6%** pre-registered; 88.9% after fixing a prompt bug the test found |
+| Attacks and out-of-scope questions blocked | 15 of 15 | **15/15** in every run |
+| Wrong refusals | ≤ 5% | 0% |
+| Cost per question (median) | ≤ $0.01 | $0.0003 |
+| Response time (90th percentile) | ≤ 10 s | 6.0 s |
+
+- **Several layers of protection, each tested on its own:** a read-only role, read-only transactions, a 5-second timeout, a query checker (`sqlglot`), scope rules and usage limits. Checked on the real database, the role alone stopped all 12 attack queries.
+- **Every miss was diagnosed:** 2 of 90 were genuine model errors. The rest were a prompt bug (fixed) and known limits of the scorer, recorded rather than re-scored.
+- **Along the way, testing found:** the dashboard's "read-only" database login could in fact write (replaced, DL-012), a scorer bug that rounding hid, and that the index's ties make "top N" questions ambiguous.
+
+Code: [`nlq/`](nlq/). Results: [`reports/nlq_eval/`](reports/nlq_eval/).
+
 ## Architecture
 
 ```mermaid
@@ -116,6 +134,11 @@ Most of the work was in understanding the sources before loading them. Some of t
 - The raw layer stores every version of every row but cannot tell a row deleted at the source from an unchanged one. A test stops the build if this would double-count an IPC area (DL-019).
 - It runs on free tiers. The dashboard sleeps when unused and takes about 30 seconds to wake.
 
+**Ask the data**
+- It answered about 86–89% of held-back test questions correctly, so **about 1 in 10 answers can be wrong**. The SQL is shown so answers can be checked.
+- The fixed prompt's 88.9% comes from questions already seen while fixing it. A clean estimate needs new held-out questions (DL-026).
+- The daily question limit is kept in the app's memory and resets if the app restarts. The Anthropic spend limit is the hard cap.
+
 The [decision log](docs/decisions.md) keeps the full running list, with the evidence for each item.
 
 ## Scope of v1
@@ -127,6 +150,8 @@ The [decision log](docs/decisions.md) keeps the full running list, with the evid
 - the live dashboard;
 - automatic monthly refresh;
 - a written AWS target architecture.
+
+**In v1.1:** "Ask the data" (DL-026).
 
 **Planned for v2,** each to be validated before it is published:
 - a separate excess-rainfall (flood) signal;
@@ -145,6 +170,8 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 # create a .env file in the repo root containing:
 # DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+# DASHBOARD_DATABASE_URL=...   a read-only login for the dashboard and Ask the data (DL-012)
+# ANTHROPIC_API_KEY=...        for Ask the data
 
 python scripts/build_reference.py            # county reference tables
 python -m ingest.run --download              # download HDX sources, then load all raw sources
@@ -155,6 +182,8 @@ python -m modelling.validate_index          # risk index vs IPC (DL-022)
 python -m modelling.forecast_maize           # publish the maize price forecast (DL-025)
 python scripts/run_dbt.py build --select fct_price_forecast
 streamlit run dashboard/app.py               # dashboard at http://localhost:8501
+python -m nlq.check_on_database              # Ask the data: guardrails against the real database
+python -m nlq.evaluate --split dev --model claude-haiku-5-5   # see DL-026 for test-set rules
 python -m pytest tests/
 ```
 
@@ -177,7 +206,7 @@ Raw data is not included in this repository. The FEWS NET/FPMA data is licensed 
 
 ## Status
 
-**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC, automatic HDX downloads, CI and a scheduled monthly refresh, a published monthly price forecast (DL-025), a live dashboard, a written AWS target architecture (DL-013). **v1 is complete.**
+**Done:** source profiling, reference tables, raw ingestion, dbt staging and marts for prices, climate and IPC, the county risk index (DL-022), forecasting backtest with climate features, risk index validated against IPC, automatic HDX downloads, CI and a scheduled monthly refresh, a published monthly price forecast (DL-025), a live dashboard, a written AWS target architecture (DL-013). **v1 is complete.** v1.1 adds "Ask the data" (DL-026).
 
 **Next:** see [Scope of v1](#scope-of-v1) for what v2 adds.
 

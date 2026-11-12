@@ -737,6 +737,71 @@ What the misses showed, and the changes made before freezing the prompt:
 - **New worked example:** a `WITH TIES` question about maize prices, not from the evaluation sets.
 - **New prompt hash:** `269dd0f83b2b`. Next: re-run dev on both models; if nothing else needs changing, freeze this hash and run the test set.
 
+**Test set result (2026-11-11, prompt `269dd0f83b2b` frozen, 30 test questions × 3 runs, real database). This is the pre-registered result.**
+
+| Model | Test accuracy, mean (range) | Attacks | Wrong refusals | Median cost per question | 90th percentile time |
+|---|---|---|---|---|---|
+| Claude Haiku 5.5 | **85.6%** (83.3–86.7%) | **15/15 in all 3 runs** | 0% | $0.0003 | 6.0 s |
+| Claude Sonnet 5.5 | **91.1%** (90.0–93.3%) | not run | 0% | $0.0027 | 6.8 s |
+
+- **Every target is met by both models.** Under the rule "the cheapest model that meets every target", **Haiku is chosen, and the feature is published** (≥ 85%), not labelled experimental.
+- **The margin is thin.** Haiku's mean clears 85% by 0.6 points, and one of its three runs scored 83.3%.
+- **Total API cost of the test runs:** $0.38.
+
+**Every miss, diagnosed after scoring** (from the saved SQL in `reports/nlq_eval/`; the scores above are not changed by this):
+
+| Question | Misses (Haiku / Sonnet, of 3 each) | Cause |
+|---|---|---|
+| q03, q26 | 6 / 5 | **Prompt bug (mine).** The prompt said both "include ties with `FETCH FIRST n ROWS WITH TIES`" and "break ties by `county_name`". The models put both in one `ORDER BY`. `WITH TIES` compares the whole `ORDER BY`, so the name tie-break removed the ties: 5 rows instead of 7. The one Sonnet run that used `rank()` passed. |
+| q28 | 3 / 3 | **Scoring artifact.** The query is correct, but the percentage change is rounded to 1 decimal, and the pre-registered rule compares at 2 decimals. |
+| q37 | 2 / 0 | **Scoring limitation.** The right two counts, but laid out as one row with two columns instead of two rows. The scorer matches columns, not reshaped tables. |
+| q10 | 2 / 0 | **Genuine model error.** Adding `ipc_coverage_ratio` to `SELECT DISTINCT` returned one row per county *and* ratio, so counties repeated. |
+
+- **Haiku:** of 13 misses in 90 answers, 2 were genuine model errors, 6 the prompt bug and 5 scoring limits.
+- **Sonnet:** none of its 8 misses were model errors.
+- **The scorer is not changed after the fact.** Its rounding and layout limits are recorded here as known limits, to address in the next evaluation design.
+
+**Fix and re-run (2026-11-12).**
+
+- **What changed:** only the tie rule in the prompt. Ties are kept with `rank()`, or with `WITH TIES` ordered by the value only; any `county_name` tie-break goes in an outer sort. The `WITH TIES` worked example was corrected the same way, and a test now checks that examples never put a tie-break in a `WITH TIES` ordering.
+- **What did not change:** the scorer and the questions.
+- **New prompt hash:** `249f7342fe46`.
+- **This re-run is not a fresh, unseen estimate.** The fix was found on the test set, so its test score is reported as a re-run after a fix, labelled in the results files. A clean estimate of the fixed prompt needs new held-out questions, which is a v2 task. The live page uses the fixed prompt.
+
+**Re-run after the tie fix (2026-11-12, prompt `249f7342fe46`, Claude Haiku 5.5, labelled "rerun after tie fix").**
+
+| Set | Result |
+|---|---|
+| Dev | 10/10 |
+| Attacks | 15/15 |
+| Test (3 runs) | **88.9%** (86.7–90.0%), wrong refusals 0%, median $0.0003 per question, 90th percentile 5.8 s |
+
+- **The diagnosis held for the tie bug:**
+  - q03 went from 3 misses to 0;
+  - q26 from 3 to 1. That one was blocked: the model's query was rejected twice by the join rule.
+- **The remaining misses are the ones diagnosed above:**
+  - q28 (rounding, 3/3);
+  - q37 (layout, 3/3);
+  - q10 (the genuine `SELECT DISTINCT` error, 3/3).
+- **The prediction was wrong by 3 points.** I had predicted about 92%. The difference is run-to-run variation: q10 and q37 each missed once more than in the frozen run.
+- **This is not an unseen estimate**, for the reason given above.
+
+**Published (v1.1).** "Ask the data" is a second dashboard page (`dashboard/ask_page.py`) using Claude Haiku 5.5 and prompt `249f7342fe46`. It shows the answer table, the model's reason and the exact SQL that ran.
+
+- **Limits (guardrail 5, `dashboard/ask_limits.py`):**
+  - 300 characters per question;
+  - 5 questions per visitor session. This is a soft limit, since a reload starts a new session;
+  - the owner: a private key (`ASK_OWNER_KEY` secret), opened once as `?key=…` and then removed from the address bar, gives that session 50 questions outside the daily cap, so the page can always be demonstrated;
+  - 300 questions a day across all visitors, about $0.10 a day at the tested median cost;
+  - identical questions are answered from a 6-hour cache without a new model call;
+  - the Anthropic account's $10 monthly spend limit is the hard backstop.
+- **The read-only check:** the page refuses to answer if its database login can write.
+- **What the page tells visitors:** that it is tested at 86% (89% after the fix) and can be wrong; that they should check the SQL for anything that matters; and that their question goes to Anthropic's API but the result rows do not.
+- **Logging:** each question is logged to the app logs with its status and cost.
+- **Next evaluation (v2):**
+  - new held-out questions, for a clean estimate of the fixed prompt;
+  - a scorer that compares percentages at the precision the answer reports, and recognises a table reshaped from rows to columns.
+
 **Revisit if.** Accuracy falls below target after a mart change, an attack gets through in testing or use, or the monthly model cost goes over budget.
 
 ---

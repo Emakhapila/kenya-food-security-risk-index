@@ -63,8 +63,11 @@ Definitions (use these exactly):
 - Shares (share_phase3plus) are fractions from 0 to 1.
 - Ties: the risk index and IPC shares take a limited set of values, so ties are common.
   For "top N", "N highest/lowest" or "the highest/lowest", include every row tied at the
-  cut-off: use FETCH FIRST n ROWS WITH TIES (after ORDER BY) or rank(), not LIMIT.
-  When sorting, break ties by county_name.
+  cut-off, never LIMIT. Either filter on rank() <= n in a subquery, or use
+  FETCH FIRST n ROWS WITH TIES with ORDER BY on the value ONLY: WITH TIES compares the
+  whole ORDER BY, so adding county_name there removes the ties.
+  To sort a result, break ties by county_name, but in an outer query or with rank(),
+  never in the ORDER BY that FETCH ... WITH TIES uses.
 
 Refuse (status "refused") when:
 - the question asks who needs help or should get aid, or which county is the most food

@@ -1,0 +1,32 @@
+{
+  "date": "20261112-0925",
+  "split": "test",
+  "model": "claude-haiku-5-5",
+  "effort": null,
+  "prompt_hash": "249f7342fe46",
+  "label": "rerun after tie fix",
+  "runs": 3,
+  "questions": 30,
+  "score_per_run": [
+    0.9,
+    0.8666666666666667,
+    0.9
+  ],
+  "score_mean": 0.888888888888889,
+  "score_range": [
+    0.8666666666666667,
+    0.9
+  ],
+  "wrong_refusal_rate": 0.0,
+  "model_wrote_rejected_sql": 3,
+  "cost_median_usd": 0.00027196999999999996,
+  "cost_total_usd": 0.03138668000000001,
+  "latency_p90_s": 5.83,
+  "targets": {
+    "accuracy_publish": 0.85,
+    "accuracy_experimental": 0.7,
+    "wrong_refusals_max": 0.05,
+    "cost_median_max_usd": 0.01,
+    "latency_p90_max_s": 10.0
+  }
+}

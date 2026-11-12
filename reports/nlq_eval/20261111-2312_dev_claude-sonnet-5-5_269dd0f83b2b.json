@@ -1,0 +1,29 @@
+{
+  "date": "20261111-2312",
+  "split": "dev",
+  "model": "claude-sonnet-5-5",
+  "effort": null,
+  "prompt_hash": "269dd0f83b2b",
+  "runs": 1,
+  "questions": 10,
+  "score_per_run": [
+    1.0
+  ],
+  "score_mean": 1.0,
+  "score_range": [
+    1.0,
+    1.0
+  ],
+  "wrong_refusal_rate": 0.0,
+  "model_wrote_rejected_sql": 0,
+  "cost_median_usd": 0.0031176999999999997,
+  "cost_total_usd": 0.0468458,
+  "latency_p90_s": 4.31,
+  "targets": {
+    "accuracy_publish": 0.85,
+    "accuracy_experimental": 0.7,
+    "wrong_refusals_max": 0.05,
+    "cost_median_max_usd": 0.01,
+    "latency_p90_max_s": 10.0
+  }
+}

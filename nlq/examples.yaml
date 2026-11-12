@@ -70,7 +70,7 @@ examples:
       where month = (select max(month) from marts.fct_maize_price_monthly
                      where price_kes_per_kg is not null)
         and price_kes_per_kg is not null
-      order by price_kes_per_kg asc, county_name
+      order by price_kes_per_kg asc
       fetch first 3 rows with ties
     reason: The 3 lowest retail maize prices that month, in KES per kg, including any county tied with the third.
 

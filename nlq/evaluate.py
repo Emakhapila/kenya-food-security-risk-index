@@ -119,6 +119,7 @@ def main(argv=None) -> int:
     ap.add_argument("--runs", type=int, default=1)
     ap.add_argument("--effort", choices=["low", "medium", "high"], default=None)
     ap.add_argument("--frozen", help="prompt hash; required for --split test")
+    ap.add_argument("--label", default="", help="recorded in the summary, e.g. 'rerun after tie fix'")
     args = ap.parse_args(argv)
 
     current = prompt_hash()
@@ -172,7 +173,7 @@ def main(argv=None) -> int:
     costs = [r["cost_usd"] for r in rows]
     summary = {
         "date": stamp, "split": args.split, "model": args.model, "effort": args.effort,
-        "prompt_hash": current, "runs": args.runs, "questions": len(items),
+        "prompt_hash": current, "label": args.label, "runs": args.runs, "questions": len(items),
         "score_per_run": per_run, "score_mean": statistics.mean(per_run),
         "score_range": [min(per_run), max(per_run)],
         "wrong_refusal_rate": (sum(1 for r in rows if r["wrong_refusal"] is True) / len(rows))
